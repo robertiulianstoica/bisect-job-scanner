@@ -1,9 +1,57 @@
-> **bisect-job-scanner** is the job scanner for [Bisect](https://bisect.eu) users:
-> a fork of JobSpy that adds company job boards and remote-jobs boards, and a
-> scanner on top that emails you new roles within half an hour of their being
-> posted. Start with the [quick start](#quick-start) below; the scanner's full
-> documentation is in [Bisect job scanner](#bisect-job-scanner), and the rest
-> of this README is upstream JobSpy's.
+# bisect-job-scanner
+
+A job scanner for [Bisect](https://bisect.eu) users. It reads company career
+sites, job boards and LinkedIn every 30 minutes, keeps the roles that match
+your stack and the places you can work from, and emails you the new ones,
+usually within half an hour of their being posted. The applications you send
+are tracked in Bisect through its MCP server.
+
+It is a fork of [JobSpy](https://github.com/cullenwatson/JobSpy) (MIT): the
+scraping library in `jobspy/` comes from there, with new sources added; its own
+documentation is upstream.
+
+## What it does
+
+- **Finds jobs early.** It reads companies' own career sites (Greenhouse,
+  Ashby, Lever, Workday and more) directly, so a role shows up as soon as it is
+  published, before it is syndicated to LinkedIn or the aggregators. Every
+  company board seen in a LinkedIn or Himalayas result is added to the
+  rotation, so the list of companies read grows by itself.
+- **Screens them for you.** A job must mention your stack, be workable from
+  where you are (your country and cities, a region that includes you, or
+  another country as a contractor), stay under an applicant limit, and avoid
+  the titles, industries and companies you exclude. TypeScript/Python-only
+  roles can be held to a second bar: they must match your strengths.
+- **Emails the new ones** at the hours you choose (08:00 and 14:00 by
+  default), through any SMTP server; between those hours they wait in a queue,
+  so nothing is lost.
+- **Keeps your verdicts:** shortlist, maybe, later, applied or out, with a
+  reason, and whether the jobs you kept are still open (`scanner.triage`).
+- **Tracks applications in Bisect:** from Claude Code, "I applied to Acme"
+  records the application against the CV version you sent and links it to the
+  job; the scanner's daily numbers fill the top of Bisect's funnel.
+- **Checks adverts before you apply:** `scanner.vet` reports the signs of an
+  advert that exists only to collect CVs: a recently registered company
+  domain, one advert cloned across many countries, a company site that does
+  not link to the board. It reports; you decide.
+- **Counts the market:** every job read is kept, with its stack, pay and work
+  mode, for a local dashboard of open jobs, pay and demand by language and
+  region (`scanner.market`, `/market` on the review server).
+- **Backs itself up** every night, and keeps all your data outside the
+  repository.
+
+## Where it searches
+
+| Kind | Sources |
+|---|---|
+| Company career sites | Greenhouse, Ashby, Lever, Workday, Workable, SmartRecruiters, Teamtailor, Recruitee, Personio, Gem, Rippling |
+| Searches across companies | LinkedIn (remote, per country or region, with applicant counts), Himalayas (remote, by the country you work from), Workable's job search, Welcome to the Jungle, Hacker News "Who is hiring?", Remote Rocketship |
+| Stack-specific boards | LaraJobs (Laravel), symfony.com/jobs (Symfony) |
+| Regional boards | No Fluff Jobs (Poland and Central Europe), Djinni (Ukraine and Eastern Europe); in Romania: eJobs, BestJobs, Hipo, peviitor.ro, joburiit.ro, devjob.ro, phpjobs.ro |
+
+All of them are read through public APIs, feeds or pages: no browser, no
+login. Each source is switched on and off in your config, and company boards
+are added by name (`scanner.run --add-board greenhouse <company>`).
 
 ## Quick start
 
@@ -86,320 +134,21 @@ On Linux everything but step 5 works; schedule the scan with cron instead:
 
 **JobSpy** is a job scraping library with the goal of aggregating all the jobs from popular job boards with one tool.
 
-## Features
-
-- Scrapes job postings from **LinkedIn**, **Indeed**, **Glassdoor**, **Google**, **ZipRecruiter**, & other job boards concurrently
-- Aggregates the job postings in a dataframe
-- Proxies support to bypass blocking
-
-![jobspy](https://github.com/cullenwatson/JobSpy/assets/78247585/ec7ef355-05f6-4fd3-8161-a817e31c5c57)
-
-### Installation
-
-```
-pip install -U python-jobspy
-```
-
-_Python version >= [3.10](https://www.python.org/downloads/release/python-3100/) required_
-
-### Usage
-
-```python
-import csv
-from jobspy import scrape_jobs
-
-jobs = scrape_jobs(
-    site_name=["indeed", "linkedin", "zip_recruiter", "google"], # "glassdoor", "bayt", "naukri", "bdjobs"
-    search_term="software engineer",
-    google_search_term="software engineer jobs near San Francisco, CA since yesterday",
-    location="San Francisco, CA",
-    results_wanted=20,
-    hours_old=72,
-    country_indeed='USA',
-    
-    # linkedin_fetch_description=True # gets more info such as description, direct job url (slower)
-    # proxies=["208.195.175.46:65095", "208.195.175.45:65095", "localhost"],
-)
-print(f"Found {len(jobs)} jobs")
-print(jobs.head())
-jobs.to_csv("jobs.csv", quoting=csv.QUOTE_NONNUMERIC, escapechar="\\", index=False) # to_excel
-```
-
-### Output
-
-```
-SITE           TITLE                             COMPANY           CITY          STATE  JOB_TYPE  INTERVAL  MIN_AMOUNT  MAX_AMOUNT  JOB_URL                                            DESCRIPTION
-indeed         Software Engineer                 AMERICAN SYSTEMS  Arlington     VA     None      yearly    200000      150000      https://www.indeed.com/viewjob?jk=5e409e577046...  THIS POSITION COMES WITH A 10K SIGNING BONUS!...
-indeed         Senior Software Engineer          TherapyNotes.com  Philadelphia  PA     fulltime  yearly    135000      110000      https://www.indeed.com/viewjob?jk=da39574a40cb...  About Us TherapyNotes is the national leader i...
-linkedin       Software Engineer - Early Career  Lockheed Martin   Sunnyvale     CA     fulltime  yearly    None        None        https://www.linkedin.com/jobs/view/3693012711      Description:By bringing together people that u...
-linkedin       Full-Stack Software Engineer      Rain              New York      NY     fulltime  yearly    None        None        https://www.linkedin.com/jobs/view/3696158877      Rain’s mission is to create the fastest and ea...
-zip_recruiter Software Engineer - New Grad       ZipRecruiter      Santa Monica  CA     fulltime  yearly    130000      150000      https://www.ziprecruiter.com/jobs/ziprecruiter...  We offer a hybrid work environment. Most US-ba...
-zip_recruiter Software Developer                 TEKsystems        Phoenix       AZ     fulltime  hourly    65          75          https://www.ziprecruiter.com/jobs/teksystems-0...  Top Skills' Details• 6 years of Java developme...
-
-```
-
-### Parameters for `scrape_jobs()`
-
-```plaintext
-Optional
-├── site_name (list|str): 
-|    linkedin, zip_recruiter, indeed, glassdoor, google, bayt, bdjobs
-|    (default is all)
-│
-├── search_term (str)
-|
-├── google_search_term (str)
-|     search term for google jobs. This is the only param for filtering google jobs.
-│
-├── location (str)
-│
-├── distance (int): 
-|    in miles, default 50
-│
-├── job_type (str): 
-|    fulltime, parttime, internship, contract
-│
-├── proxies (list): 
-|    in format ['user:pass@host:port', 'localhost']
-|    each job board scraper will round robin through the proxies
-|
-├── is_remote (bool)
-│
-├── results_wanted (int): 
-|    number of job results to retrieve for each site specified in 'site_name'
-│
-├── easy_apply (bool): 
-|    filters for jobs that are hosted on the job board site (LinkedIn easy apply filter no longer works)
-|
-├── user_agent (str): 
-|    override the default user agent which may be outdated
-│
-├── description_format (str): 
-|    markdown, html (Format type of the job descriptions. Default is markdown.)
-│
-├── offset (int): 
-|    starts the search from an offset (e.g. 25 will start the search from the 25th result)
-│
-├── hours_old (int): 
-|    filters jobs by the number of hours since the job was posted 
-|    (ZipRecruiter and Glassdoor round up to next day.)
-│
-├── verbose (int) {0, 1, 2}: 
-|    Controls the verbosity of the runtime printouts 
-|    (0 prints only errors, 1 is errors+warnings, 2 is all logs. Default is 2.)
-
-├── linkedin_fetch_description (bool): 
-|    fetches full description and direct job url for LinkedIn (Increases requests by O(n))
-│
-├── linkedin_company_ids (list[int]): 
-|    searches for linkedin jobs with specific company ids
-|
-├── country_indeed (str): 
-|    filters the country on Indeed & Glassdoor (see below for correct spelling)
-|
-├── enforce_annual_salary (bool): 
-|    converts wages to annual salary
-|
-├── ca_cert (str)
-|    path to CA Certificate file for proxies
-```
-
-```
-├── Indeed limitations:
-|    Only one from this list can be used in a search:
-|    - hours_old
-|    - job_type & is_remote
-|    - easy_apply
-│
-└── LinkedIn limitations:
-|    Only one from this list can be used in a search:
-|    - hours_old
-|    - easy_apply
-```
-
-## Supported Countries for Job Searching
-
-### **LinkedIn**
-
-LinkedIn searches globally & uses only the `location` parameter. 
-
-### **ZipRecruiter**
-
-ZipRecruiter searches for jobs in **US/Canada** & uses only the `location` parameter.
-
-### **Indeed / Glassdoor**
-
-Indeed & Glassdoor supports most countries, but the `country_indeed` parameter is required. Additionally, use the `location`
-parameter to narrow down the location, e.g. city & state if necessary. 
-
-You can specify the following countries when searching on Indeed (use the exact name, * indicates support for Glassdoor):
-
-|                      |              |            |                |
-|----------------------|--------------|------------|----------------|
-| Argentina            | Australia*   | Austria*   | Bahrain        |
-| Belgium*             | Brazil*      | Canada*    | Chile          |
-| China                | Colombia     | Costa Rica | Czech Republic |
-| Denmark              | Ecuador      | Egypt      | Finland        |
-| France*              | Germany*     | Greece     | Hong Kong*     |
-| Hungary              | India*       | Indonesia  | Ireland*       |
-| Israel               | Italy*       | Japan      | Kuwait         |
-| Luxembourg           | Malaysia     | Mexico*    | Morocco        |
-| Netherlands*         | New Zealand* | Nigeria    | Norway         |
-| Oman                 | Pakistan     | Panama     | Peru           |
-| Philippines          | Poland       | Portugal   | Qatar          |
-| Romania              | Saudi Arabia | Singapore* | South Africa   |
-| South Korea          | Spain*       | Sweden     | Switzerland*   |
-| Taiwan               | Thailand     | Turkey     | Ukraine        |
-| United Arab Emirates | UK*          | USA*       | Uruguay        |
-| Venezuela            | Vietnam*     |            |                |
-
-### **Bayt**
-
-Bayt only uses the search_term parameter currently and searches internationally
-
-
-
-## Notes
-* Indeed is the best scraper currently with no rate limiting.  
-* All the job board endpoints are capped at around 1000 jobs on a given search.  
-* LinkedIn is the most restrictive and usually rate limits around the 10th page with one ip. Proxies are a must basically.
-
-## Frequently Asked Questions
-
----
-**Q: Why is Indeed giving unrelated roles?**  
-**A:** Indeed searches the description too.
-
-- use - to remove words
-- "" for exact match
-
-Example of a good Indeed query
-
-```py
-search_term='"engineering intern" software summer (java OR python OR c++) 2025 -tax -marketing'
-```
-
-This searches the description/title and must include software, summer, 2025, one of the languages, engineering intern exactly, no tax, no marketing.
-
----
-
-**Q: No results when using "google"?**  
-**A:** You have to use super specific syntax. Search for google jobs on your browser and then whatever pops up in the google jobs search box after applying some filters is what you need to copy & paste into the google_search_term. 
-
----
-
-**Q: Received a response code 429?**  
-**A:** This indicates that you have been blocked by the job board site for sending too many requests. All of the job board sites are aggressive with blocking. We recommend:
-
-- Wait some time between scrapes (site-dependent).
-- Try using the proxies param to change your IP address.
-
----
-
-### JobPost Schema
-
-```plaintext
-JobPost
-├── title
-├── company
-├── company_url
-├── job_url
-├── location
-│   ├── country
-│   ├── city
-│   ├── state
-├── is_remote
-├── description
-├── job_type: fulltime, parttime, internship, contract
-├── job_function
-│   ├── interval: yearly, monthly, weekly, daily, hourly
-│   ├── min_amount
-│   ├── max_amount
-│   ├── currency
-│   └── salary_source: direct_data, description (parsed from posting)
-├── date_posted
-└── emails
-
-Linkedin specific
-└── job_level
-
-Linkedin & Indeed specific
-└── company_industry
-
-Indeed specific
-├── company_country
-├── company_addresses
-├── company_employees_label
-├── company_revenue_label
-├── company_description
-└── company_logo
-
-Naukri specific
-├── skills
-├── experience_range
-├── company_rating
-├── company_reviews_count
-├── vacancy_count
-└── work_from_home_type
-```
-
-## Bisect job scanner
-
-What this fork adds to JobSpy:
-
-- **New sites**, all through public JSON APIs, no browser and no login:
-  - `greenhouse`, `ashby`, `lever`: a company's own job board, passed as
-    `company_boards={"greenhouse": ["cloudbeds"], "ashby": ["enode"], "lever": ["acme"]}`.
-  - `rippling`: a Rippling Recruiting board (`ats.rippling.com/<slug>/jobs`), read through
-    `api.rippling.com/platform/api/ats/v1/board/<slug>/jobs`; only engineering titles are
-    opened for their description, date and pay range.
-    These see a role as soon as the company publishes it, before it is
-    syndicated to LinkedIn or any aggregator.
-  - `himalayas`: the remote-only board, filtered by the country you can work
-    from (`location="Germany"`).
-- **LinkedIn applicant counts** (`num_applicants`) when
-  `linkedin_fetch_description=True`, and `location_restrictions` where a
-  source lists the countries a remote role is open to.
-- **`scanner/`**, a job-alert loop built on the library:
-  - reads the boards, Himalayas and LinkedIn searches every 30 minutes;
-  - keeps roles that match the stack you want, where you can legally work
-    (home country, a region that includes it, or another EU country as a
-    contractor), under an applicant limit, and not already seen;
-  - learns new company boards from the links in LinkedIn and Himalayas
-    results, so the next run reads those companies directly;
-  - emails the new ones through any SMTP server given as a Symfony Mailer
-    DSN (`smtp://user:password@smtp.example.com:587`).
-
-### Setting it up
-
-macOS, Python 3.11 or later (`uv` is used when installed). On Linux the
-scanner and backups run the same way, but the schedule is yours to set up with
-cron: `scanner/launchd/` is macOS only.
+## Everyday commands
 
 ```bash
-git clone <this repository> bisect-job-scanner && cd bisect-job-scanner
-./setup.sh            # venv, your profile directory, an example config, an empty env, the pre-commit check
+.venv/bin/python -m scanner.jobs --days 3                  # what was emailed lately
+.venv/bin/python -m scanner.jobs --rejected --grep laravel # what the rules turned down, and why
+.venv/bin/python -m scanner.triage list                    # your shortlist, maybe and later
+.venv/bin/python -m scanner.triage set <url> shortlist "remote, good stack"
+.venv/bin/python -m scanner.triage check                   # are the jobs you kept still open?
+.venv/bin/python -m scanner.triage funnel --days 7         # per day: found, and worth a look
+.venv/bin/python -m scanner.vet <job url>                  # is this advert from a real employer?
+.venv/bin/python -m scanner.market                         # pay by language, from the adverts read
+.venv/bin/python -m scanner.run --add-board greenhouse <company>
 ```
 
-Then:
-
-1. Edit `~/.job-scanner/config.toml` (`scanner/config.example.toml` explains every
-   field): what to search for, where you can work, who gets the email, and
-   `[profile]` (a contact address for the User-Agent, the launchd label).
-2. Fill in `~/.job-scanner/env`, which `scanner/launchd/run.sh` sources:
-   `JOB_SCANNER_MAILER_DSN` (an SMTP server as a Symfony Mailer DSN,
-   `smtp://user:password@smtp.example.com:587`) and `JOB_SCANNER_MAIL_FROM`.
-3. `.venv/bin/python -m scanner.run --dry-run` prints what would be sent.
-4. `scanner/launchd/install.sh` schedules a scan every 30 minutes and a backup
-   every day at 03:00 (`uninstall.sh` removes both).
-
-```bash
-.venv/bin/python -m scanner.run --add-board greenhouse somecompany
-.venv/bin/python -m scanner.jobs              # what was emailed lately
-.venv/bin/python -m scanner.triage list       # your verdicts on them
-```
-
-### Tracking applications with Bisect
+## Tracking applications with Bisect
 
 Finding jobs works on its own. Tracking what you do with them is built on
 [Bisect](https://bisect.eu), and needs:
@@ -439,7 +188,7 @@ Nothing in the scanner calls Bisect by itself: Claude Code does, following
 The review screen below shows each application's Bisect id next to the
 letter and CV that were sent.
 
-### Where your data lives
+## Where your data lives
 
 Everything personal is in one profile directory outside the repository,
 `$JOB_SCANNER_HOME` (default `~/.job-scanner`):
@@ -461,7 +210,7 @@ A job is only marked seen once it has been emailed. Between `send_hours` scans
 only queue what they find in `pending.json`; the first scan after a send hour
 emails the whole queue in one message, and a failed send leaves it queued.
 
-### Backups and restore
+## Backups and restore
 
 ```bash
 .venv/bin/python -m scanner.backup            # what the daily agent runs
@@ -482,14 +231,14 @@ emails the whole queue in one message, and a failed send leaves it queued.
 - `--restore` writes to `--to`; it replaces the live database only with
   `--force`, when no scan holds the lock, and keeps the old file beside it.
 
-### Never commit
+## Never commit
 
 `config.toml`, `env` or any `.env*`, `*.sqlite3*`, `pending.json`, logs and
 `backups/` are in `.gitignore`. The pre-commit check (`.githooks/pre-commit`,
 enabled by `setup.sh`) also refuses staged database files and added lines with
 an `smtp://` URL, a `JOB_SCANNER_MAILER_DSN=` value or a `~/.job-scanner` path.
 
-### Reviewing the applications sent (optional)
+## Reviewing the applications sent (optional)
 
 Off unless `[review] jobs_dir` points at a jobs folder in the layout
 `scanner/review.py` describes.
