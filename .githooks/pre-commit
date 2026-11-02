@@ -1,0 +1,41 @@
+#!/bin/sh
+# Refuses a commit that would put personal data or secrets in git. Enabled by
+# setup.sh (git config core.hooksPath .githooks). Checks the staged files' names
+# and the lines being added:
+#   - database files (*.sqlite3*), env / .env*, pending.json, logs, a config.toml
+#     other than the test fixture;
+#   - smtp:// URLs (documentation placeholders on example.com/.org pass);
+#   - JOB_SCANNER_MAILER_DSN= with a value (one with <placeholders> passes);
+#   - ~/.job-scanner paths, outside the files that document the profile directory.
+# A false alarm: git commit --no-verify, after reading what it found.
+
+DOCS='^(README\.md|setup\.sh|\.githooks/.*|scanner/(settings|backup)\.py|scanner/config\.example\.toml|scanner/launchd/.*|tests/test_(hooks|setup|settings)\.py)$'
+status=0
+
+for file in $(git diff --cached --name-only --diff-filter=ACMR); do
+  name=$(basename "$file")
+  case "$file" in
+    *.sqlite3*|*/env|env|.env*|*/.env*|*pending.json|*.log)
+      echo "pre-commit: $file is personal data; keep it in \$JOB_SCANNER_HOME" >&2; status=1; continue ;;
+  esac
+  if [ "$name" = "config.toml" ] && [ "$file" != "tests/fixtures/config.toml" ]; then
+    echo "pre-commit: $file is a personal config; keep it in \$JOB_SCANNER_HOME" >&2; status=1; continue
+  fi
+  # The patterns themselves, and the tests of these guards (fake secrets on purpose).
+  case "$file" in .githooks/*|tests/test_setup.py|tests/test_backup.py) continue ;; esac
+  added=$(git diff --cached -U0 --no-color -- "$file" | sed -n 's/^+//p' | grep -v '^++ ')
+  [ -n "$added" ] || continue
+  if echo "$added" | grep -i -E 'smtps?://[[:alnum:]%._~-]' | grep -v -E 'example\.(com|org)' >/dev/null; then
+    echo "pre-commit: $file adds an smtp:// URL (a mailer DSN belongs in \$JOB_SCANNER_HOME/env)" >&2; status=1
+  fi
+  # A value holding <placeholders> is documentation, not a secret.
+  if echo "$added" | grep -E "JOB_SCANNER_MAILER_DSN=[\"']?[^\"'\`[:space:]]" | grep -v '<' >/dev/null; then
+    echo "pre-commit: $file sets JOB_SCANNER_MAILER_DSN (it belongs in \$JOB_SCANNER_HOME/env)" >&2; status=1
+  fi
+  if ! echo "$file" | grep -E "$DOCS" >/dev/null && echo "$added" | grep -F '~/.job-scanner' >/dev/null; then
+    echo "pre-commit: $file adds a ~/.job-scanner path (personal data; refer to \$JOB_SCANNER_HOME)" >&2; status=1
+  fi
+done
+
+[ $status -eq 0 ] || echo "pre-commit: commit refused" >&2
+exit $status

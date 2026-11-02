@@ -1,0 +1,512 @@
+<title>Stack &amp; Pay Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#F3F4EF; --surface:#FFFFFF; --ink:#17201C; --muted:#5D6862; --rule:#DDE1DA; --accent:#2F5D50;
+  --accent-soft:#E3ECE7; --grid:rgba(23,32,28,.08); --warn:#9A6A12;
+  --display:"Archivo",ui-sans-serif,system-ui,sans-serif; --body:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  color-scheme:dark; --ground:#101412; --surface:#171C19; --ink:#E6EAE6; --muted:#98A39C; --rule:#2A322D;
+  --accent:#7FC4AE; --accent-soft:#1F2C27; --grid:rgba(230,234,230,.08); --warn:#E0B254;}}
+:root[data-theme="dark"]{
+  color-scheme:dark; --ground:#101412; --surface:#171C19; --ink:#E6EAE6; --muted:#98A39C; --rule:#2A322D;
+  --accent:#7FC4AE; --accent-soft:#1F2C27; --grid:rgba(230,234,230,.08); --warn:#E0B254;}
+body{background:var(--ground); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.45;}
+.wrap{max-width:1180px; margin:0 auto; padding-inline:20px; padding-block:24px 48px;}
+header.top{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 24px;}
+h1{font-family:var(--display); font-weight:700; font-size:clamp(1.6rem,3vw,2.1rem); letter-spacing:-.01em; margin:0; text-wrap:balance;}
+.stamp{font-family:var(--mono); font-size:.78rem; color:var(--muted);}
+.lede{color:var(--muted); max-width:68ch; margin:.4rem 0 0;}
+.controls{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--ground);
+  display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; padding-block:14px; margin-top:14px; border-bottom:1px solid var(--rule);}
+.seg{display:inline-flex; border:1px solid var(--rule); border-radius:8px; overflow:hidden; background:var(--surface);}
+.seg button{font:600 .85rem var(--body); color:var(--muted); background:none; border:0; padding:7px 14px; cursor:pointer;}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--surface);}
+.chips{display:flex; flex-wrap:wrap; gap:6px;}
+.chip{font:600 .8rem var(--body); display:inline-flex; align-items:center; gap:6px; border:1px solid var(--rule);
+  background:var(--surface); color:var(--muted); border-radius:999px; padding:4px 10px; cursor:pointer;}
+.chip i{width:9px; height:9px; border-radius:50%; background:var(--c); opacity:.35;}
+.chip[aria-pressed="true"]{color:var(--ink); border-color:var(--c);}
+.chip[aria-pressed="true"] i{opacity:1;}
+button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.label{font:600 .72rem var(--body); letter-spacing:.08em; text-transform:uppercase; color:var(--muted);}
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:10px; overflow:hidden; margin-top:20px;}
+.kpi{background:var(--surface); padding:14px 16px;}
+.kpi b{display:block; font-family:var(--mono); font-weight:600; font-size:1.55rem; margin-top:4px; font-variant-numeric:tabular-nums;}
+.kpi small{color:var(--muted); font-size:.8rem;}
+.grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px;}
+.panel{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:16px 16px 12px; min-width:0;}
+.panel.wide{grid-column:1 / -1;}
+.panel h2{font-family:var(--display); font-weight:600; font-size:1.05rem; margin:0;}
+.panel p.note{color:var(--muted); font-size:.82rem; margin:.25rem 0 .6rem;}
+.canvas{position:relative; height:300px;}
+.panel.wide .canvas{height:320px;}
+.panel.wide .canvas.tall{height:400px;}
+.scam-row{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:18px; align-items:start; margin-bottom:10px;}
+.kpis.small{margin-top:0; grid-template-columns:repeat(2,minmax(0,1fr));}
+.panel.wide .canvas.short{height:240px;}
+@media (max-width:760px){.scam-row{grid-template-columns:1fr;}}
+.row{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px;}
+.seg.small button{padding:4px 10px; font-size:.78rem;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+.tablewrap{overflow-x:auto;}
+th,td{padding:7px 10px; border-bottom:1px solid var(--rule); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+th{font:600 .72rem var(--body); letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+th:first-child,td:first-child{text-align:left;}
+td.mono{font-family:var(--mono);}
+.thin{color:var(--warn);}
+footer{color:var(--muted); font-size:.82rem; margin-top:22px; max-width:90ch;}
+footer p{margin:.4rem 0;}
+@media (max-width:760px){.grid{grid-template-columns:1fr;} .canvas{height:260px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important; transition:none!important;}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Stack &amp; Pay Watch</h1>
+    <!--NAV-->
+    <span class="stamp" id="stamp"></span>
+  </header>
+  <p class="lede" id="lede"></p>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Region" id="regions"></div>
+    <div class="chips" role="group" aria-label="Languages" id="chips"></div>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Open jobs by language</h2>
+      <p class="note">Engineering roles still listed in the last day, by the language they ask for most.</p>
+      <div class="canvas"><canvas id="openChart" aria-label="Open jobs by language"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Pay by language</h2>
+      <p class="note">Yearly EUR. Bar: middle half of stated ranges (mid-points). Ticks: median minimum and median maximum.</p>
+      <div class="canvas"><canvas id="payChart" aria-label="Pay by language"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <h2>Pay versus demand</h2>
+      <p class="note">Across: share of the region's open engineering jobs (log scale). Up: median pay as an index of the region's median (100 = market). Dot size: stated ranges behind the figure; faint dots rest on fewer than 10.</p>
+      <div class="canvas tall"><canvas id="weightChart" aria-label="Pay versus demand"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <div class="row">
+        <h2>New postings per day</h2>
+        <div class="row" style="gap:8px">
+          <div class="seg small" role="group" aria-label="Measure" id="measures"></div>
+          <div class="seg small" role="group" aria-label="Period" id="periods"></div>
+        </div>
+      </div>
+      <p class="note">By the date each advert was posted, seven-day average, selected languages. Only adverts still open are counted, so older days look thinner (their jobs have been filled): read the share, not the rise.</p>
+      <div class="canvas"><canvas id="newChart" aria-label="New postings per day"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Pay levels</h2>
+      <p class="note">Share of each language's stated ranges by mid-point, yearly EUR.</p>
+      <div class="canvas"><canvas id="bandChart" aria-label="Pay levels"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Open jobs over time</h2>
+      <p class="note" id="historyNote">One point per day, recorded by the scanner.</p>
+      <div class="canvas"><canvas id="historyChart" aria-label="Open jobs over time"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Jobs that build AI</h2>
+      <p class="note" id="aiBuildNote">AI in the title, or the advert asks to build AI agents, apps, bots or features. New postings per day (seven-day average) and their share of all engineering postings.</p>
+      <div class="canvas"><canvas id="aiBuildChart" aria-label="Jobs that build AI"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Jobs that work with AI tools</h2>
+      <p class="note" id="aiUseNote">The advert asks you to use AI tools (Copilot, Cursor, Claude Code, AI-assisted development) without building AI.</p>
+      <div class="canvas"><canvas id="aiUseChart" aria-label="Jobs that work with AI tools"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <h2>Remote, hybrid or on-site</h2>
+      <p class="note" id="modeNote">Open engineering jobs by work mode: from the site's own location and flags, else the advert's text.</p>
+      <div class="canvas"><canvas id="modeChart" aria-label="Remote, hybrid or on-site by language"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <h2>Suspicious postings</h2>
+      <p class="note" id="scamNote"></p>
+      <div class="scam-row">
+        <div class="kpis small" id="scamKpis"></div>
+        <div class="canvas short"><canvas id="scamChart" aria-label="Suspicious postings by source"></canvas></div>
+      </div>
+      <div class="tablewrap"><table id="scamTable"></table></div>
+    </section>
+    <section class="panel">
+      <h2>Hiring by company age</h2>
+      <p class="note" id="ageNote">Open engineering jobs (bars) and median pay (line), by how long the company has existed.</p>
+      <div class="canvas"><canvas id="ageChart" aria-label="Hiring by company age"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Stack by company age</h2>
+      <p class="note">Share of each age group's open jobs by main language (selected languages; the rest as Other).</p>
+      <div class="canvas"><canvas id="ageStackChart" aria-label="Stack by company age"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <h2>Most active hirers</h2>
+      <p class="note">Companies with the most open engineering jobs in the region. Founding year from Wikidata; marked ≈ when only the domain's registration date was available.</p>
+      <div class="tablewrap"><table id="hirers"></table></div>
+    </section>
+    <section class="panel wide">
+      <h2>How long adverts stay up</h2>
+      <p class="note" id="lifeNote"></p>
+      <div class="canvas short"><canvas id="lifeChart" aria-label="How long adverts stay up"></canvas></div>
+    </section>
+    <section class="panel wide">
+      <h2>By language</h2>
+      <p class="note">Figures in <span class="thin">amber</span> rest on fewer than 10 stated ranges.</p>
+      <div class="tablewrap"><table id="table"></table></div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Source: the job scanner's company boards (Greenhouse, Ashby, Lever, SmartRecruiters, Workday for Romania) plus the jobs its searches return on LinkedIn and the feeds. That leans towards funded tech companies; agencies and local employers who post elsewhere are under-represented.</p>
+    <p>Pay is stored as each advert states it; here it is converted to yearly EUR at fixed approximate rates, and an unstated period is judged by size. Regions: EU includes the UK, Switzerland and Norway; "Global" is every region.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById("data").textContent);
+  const COLORS = {"PHP":"#7A6FD0","TypeScript/JavaScript":"#D19A0F","Python":"#2F7FC1","Java/Kotlin":"#C8553D",
+    "Go":"#1C9C9C","C#/.NET":"#9450B0","Ruby":"#B83A4B","Rust":"#A0643A","Scala":"#D9577D","C++":"#6B7F92"};
+  const REGION_NAMES = {global:"Global", EU:"EU", US:"US"};
+  const PERIODS = [30, 60, 120];
+  const store = { get(k, d){ try { const v = localStorage.getItem("spw:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+                  set(k, v){ try { localStorage.setItem("spw:" + k, JSON.stringify(v)); } catch {} } };
+  const languages = Object.keys(D.current.global).filter(l => l !== "all")
+    .sort((a, b) => D.current.global[b].open_jobs - D.current.global[a].open_jobs);
+  const state = {
+    region: store.get("region", "EU"),
+    langs: store.get("langs", ["PHP", "TypeScript/JavaScript", "Python", "Java/Kotlin", "Go"]).filter(l => languages.includes(l)),
+    period: store.get("period", 120),
+    measure: store.get("measure", "share"),
+  };
+  const fmt = n => n == null ? "–" : Math.round(n).toLocaleString("en-GB");
+  const k = n => n == null ? "–" : "€" + Math.round(n / 1000) + "k";
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  document.getElementById("stamp").textContent = "Data as of " + D.generated.replace("T", " ") + " UTC";
+  document.getElementById("lede").textContent =
+    `${fmt(D.totals.postings)} postings from ${fmt(D.totals.companies)} companies, of which ${fmt(D.totals.engineering)} are engineering roles. ` +
+    `Counted by main programming language; pay only where the advert states it.`;
+
+  function buttons(el, items, current, label, onPick) {
+    el.innerHTML = "";
+    for (const it of items) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label(it); b.setAttribute("aria-pressed", String(it === current));
+      b.addEventListener("click", () => onPick(it));
+      el.appendChild(b);
+    }
+  }
+  function renderControls() {
+    buttons(document.getElementById("regions"), ["global", "EU", "US"], state.region, r => REGION_NAMES[r],
+      r => { state.region = r; store.set("region", r); render(); });
+    buttons(document.getElementById("measures"), ["share", "count"], state.measure, m => m === "share" ? "Share" : "Count",
+      m => { state.measure = m; store.set("measure", m); render(); });
+    buttons(document.getElementById("periods"), PERIODS, state.period, p => p + " days",
+      p => { state.period = p; store.set("period", p); render(); });
+    const chips = document.getElementById("chips"); chips.innerHTML = "";
+    for (const l of languages) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.style.setProperty("--c", COLORS[l] || "#888");
+      b.setAttribute("aria-pressed", String(state.langs.includes(l)));
+      b.innerHTML = `<i></i>${l}`;
+      b.addEventListener("click", () => {
+        state.langs = state.langs.includes(l) ? state.langs.filter(x => x !== l) : [...state.langs, l];
+        store.set("langs", state.langs); render();
+      });
+      chips.appendChild(b);
+    }
+  }
+
+  const charts = {};
+  function chart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), config);
+  }
+  function base() {
+    Chart.defaults.font.family = css("--body"); Chart.defaults.color = css("--muted");
+    Chart.defaults.borderColor = css("--grid");
+  }
+  const selected = () => languages.filter(l => state.langs.includes(l));
+
+  function renderKpis(cur) {
+    const all = cur.all || {};
+    const days = (D.new_by_day[state.region] || {}).all || [];
+    const cutoff = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+    const week = days.filter(([d]) => d >= cutoff).reduce((s, [, n]) => s + n, 0);
+    const php = cur.PHP || {};
+    const items = [
+      ["Open engineering jobs", fmt(all.open_jobs), REGION_NAMES[state.region]],
+      ["Posted in the last 7 days", fmt(week), "by posting date"],
+      ["State their pay", all.open_jobs ? Math.round(100 * all.with_pay / all.open_jobs) + "%" : "–", fmt(all.with_pay) + " adverts"],
+      ["Median pay (mid-point)", k(all.mid_p50), "yearly EUR, all languages"],
+      ["PHP median pay", k(php.mid_p50), (php.with_pay || 0) + " stated ranges"],
+    ];
+    document.getElementById("kpis").innerHTML = items.map(([l, v, s]) =>
+      `<div class="kpi"><span class="label">${l}</span><b>${v}</b><small>${s}</small></div>`).join("");
+  }
+
+  // Names each dot, and labels the four corners of the pay-versus-demand chart.
+  const dotLabels = { id: "dotLabels", afterDatasetsDraw(c) {
+    if (c.canvas.id !== "weightChart") return;
+    const { ctx, chartArea: a, scales: { x, y } } = c;
+    ctx.save(); ctx.font = `600 12px ${css("--body")}`; ctx.fillStyle = css("--ink"); ctx.textBaseline = "middle";
+    c.data.datasets[0].data.forEach(p => {
+      const px = x.getPixelForValue(p.x), py = y.getPixelForValue(p.y), r = p.r || 6;
+      const right = px + r + 4 + ctx.measureText(p.label).width < a.right;
+      ctx.textAlign = right ? "left" : "right";
+      ctx.fillText(p.label, right ? px + r + 4 : px - r - 4, py);
+    });
+    ctx.font = `600 11px ${css("--body")}`; ctx.fillStyle = css("--muted");
+    const corner = (t, cx, cy, al, bl) => { ctx.textAlign = al; ctx.textBaseline = bl; ctx.fillText(t.toUpperCase(), cx, cy); };
+    corner("Well paid, rare", a.left + 6, a.top + 6, "left", "top");
+    corner("Well paid, in demand", a.right - 6, a.top + 6, "right", "top");
+    corner("Below market, rare", a.left + 6, a.bottom - 6, "left", "bottom");
+    corner("Below market, common", a.right - 6, a.bottom - 6, "right", "bottom");
+    ctx.restore();
+  } };
+  const marketLines = { id: "marketLines", beforeDatasetsDraw(c) {
+    if (c.canvas.id !== "weightChart") return;
+    const { ctx, chartArea: a, scales: { x, y } } = c, share = c.options.plugins.marketLines.share;
+    ctx.save(); ctx.strokeStyle = css("--muted"); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    const py = y.getPixelForValue(100), px = x.getPixelForValue(share);
+    ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.restore();
+  } };
+
+  function render() {
+    base(); renderControls();
+    const cur = D.current[state.region] || {};
+    renderKpis(cur);
+    const langs = languages.filter(l => cur[l]);
+
+    chart("openChart", { type: "bar",
+      data: { labels: langs, datasets: [{ data: langs.map(l => cur[l].open_jobs),
+        backgroundColor: langs.map(l => (COLORS[l] || "#888") + (state.langs.includes(l) ? "" : "55")), borderRadius: 3 }] },
+      options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${fmt(c.raw)} open jobs` } } },
+        scales: { x: { grid: { color: css("--grid") } }, y: { grid: { display: false } } } } });
+
+    const paid = langs.filter(l => cur[l].with_pay >= 3);
+    chart("payChart", { type: "bar",
+      data: { labels: paid, datasets: [
+        { label: "Middle half", data: paid.map(l => [cur[l].mid_p25, cur[l].mid_p75]),
+          backgroundColor: paid.map(l => (COLORS[l] || "#888") + (cur[l].with_pay < 10 ? "55" : "CC")), borderRadius: 3, barPercentage: .55 },
+        { type: "scatter", label: "Median minimum", data: paid.map(l => ({ x: cur[l].min_p50, y: l })),
+          pointStyle: "line", pointRadius: 9, borderWidth: 2, borderColor: css("--ink"), rotation: 90 },
+        { type: "scatter", label: "Median maximum", data: paid.map(l => ({ x: cur[l].max_p50, y: l })),
+          pointStyle: "line", pointRadius: 9, borderWidth: 2, borderColor: css("--accent"), rotation: 90 } ] },
+      options: { indexAxis: "y", maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 10 } },
+          tooltip: { callbacks: { label: c => c.dataset.type === "scatter" ? ` ${c.dataset.label}: ${k(c.raw.x)}`
+            : ` ${k(c.raw[0])} – ${k(c.raw[1])} (${cur[c.label].with_pay} ranges)` } } },
+        scales: { x: { min: 0, ticks: { callback: v => "€" + v / 1000 + "k" }, grid: { color: css("--grid") } },
+                  y: { type: "category", labels: paid, grid: { display: false } } } } });
+
+    const total = (cur.all || {}).open_jobs || 1, market = (cur.all || {}).mid_p50;
+    const weighted = langs.filter(l => cur[l].with_pay >= 3 && market);
+    const maxN = Math.max(1, ...weighted.map(l => cur[l].with_pay));
+    const evenShare = 100 / Math.max(1, langs.length);
+    chart("weightChart", { type: "bubble",
+      data: { datasets: [{ data: weighted.map(l => ({ x: 100 * cur[l].open_jobs / total, y: 100 * cur[l].mid_p50 / market,
+          r: 5 + 17 * Math.sqrt(cur[l].with_pay / maxN), label: l })),
+        backgroundColor: weighted.map(l => (COLORS[l] || "#888") + (cur[l].with_pay < 10 ? "40" : "B3")),
+        borderColor: weighted.map(l => COLORS[l] || "#888"), borderWidth: 1.5 }] },
+      options: { maintainAspectRatio: false, layout: { padding: { right: 12, top: 4 } },
+        plugins: { legend: { display: false }, marketLines: { share: evenShare },
+          tooltip: { callbacks: { label: c => { const l = c.raw.label, s = cur[l];
+            return ` ${l}: ${c.raw.x.toFixed(1)}% of jobs, pay index ${Math.round(c.raw.y)} (median ${k(s.mid_p50)}, ${s.with_pay} ranges)`; } } } },
+        scales: { x: { type: "logarithmic", min: 0.1, max: 100, title: { display: true, text: "Share of open jobs (%)" },
+                       ticks: { callback: v => [0.1, 0.3, 1, 3, 10, 30, 100].includes(+v) ? v + "%" : "" }, grid: { color: css("--grid") } },
+                  y: { title: { display: true, text: "Pay index (100 = region median)" }, suggestedMin: 40, suggestedMax: 160,
+                       grid: { color: css("--grid") } } } },
+      plugins: [marketLines, dotLabels] });
+
+    const end = new Date(); const start = new Date(end - state.period * 864e5);
+    const daysList = []; for (let d = new Date(start); d <= end; d = new Date(+d + 864e5)) daysList.push(d.toISOString().slice(0, 10));
+    const rolling = raw => raw.map((_, i) => { const w = raw.slice(Math.max(0, i - 6), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; });
+    const allMap = Object.fromEntries(((D.new_by_day[state.region] || {}).all) || []);
+    const allAvg = rolling(daysList.map(d => allMap[d] || 0));
+    const series = selected().map(l => {
+      const m = Object.fromEntries(((D.new_by_day[state.region] || {})[l]) || []);
+      const raw = daysList.map(d => m[d] || 0);
+      const counts = rolling(raw);
+      const avg = state.measure === "share" ? counts.map((c, i) => allAvg[i] ? 100 * c / allAvg[i] : null) : counts;
+      return { label: l, data: avg, borderColor: COLORS[l], backgroundColor: COLORS[l] + "22", tension: .3, pointRadius: 0, borderWidth: 2, fill: false };
+    });
+    chart("newChart", { type: "line", data: { labels: daysList, datasets: series },
+      options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { labels: { boxWidth: 10 } }, tooltip: { callbacks: { label: c => state.measure === "share"
+          ? ` ${c.dataset.label}: ${c.raw == null ? "–" : c.raw.toFixed(0) + "%"} of new postings` : ` ${c.dataset.label}: ${c.raw.toFixed(1)} a day` } } },
+        scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+                  y: { beginAtZero: true, grid: { color: css("--grid") },
+                       ticks: { callback: v => state.measure === "share" ? v + "%" : v } } } } });
+
+    const banded = selected().filter(l => cur[l] && cur[l].bands && cur[l].with_pay >= 3);
+    chart("bandChart", { type: "bar",
+      data: { labels: banded, datasets: D.bands.map((b, i) => ({ label: b,
+        data: banded.map(l => 100 * cur[l].bands[i] / cur[l].with_pay),
+        backgroundColor: `color-mix(in srgb, ${css("--accent")} ${15 + i * 11}%, ${css("--surface")})` })) },
+      options: { indexAxis: "y", maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toFixed(0)}%` } } },
+        scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + "%" }, grid: { color: css("--grid") } }, y: { stacked: true, grid: { display: false } } } } });
+
+    const hist = D.daily.filter(r => r.region === state.region);
+    const histDays = [...new Set(hist.map(r => r.day))].sort();
+    document.getElementById("historyNote").textContent = histDays.length < 2
+      ? `One point per day, recorded by the scanner. History starts ${histDays[0] || "today"}; the line grows daily.`
+      : "One point per day, recorded by the scanner.";
+    chart("historyChart", { type: "line",
+      data: { labels: histDays, datasets: selected().map(l => ({ label: l, borderColor: COLORS[l], backgroundColor: COLORS[l],
+        data: histDays.map(d => (hist.find(r => r.day === d && r.language === l) || {}).open_jobs ?? null),
+        pointRadius: 3, tension: .25, borderWidth: 2 })) },
+      options: { maintainAspectRatio: false, plugins: { legend: { labels: { boxWidth: 10 } } },
+        scales: { y: { beginAtZero: true, grid: { color: css("--grid") } }, x: { grid: { display: false } } } } });
+
+    const ai = (D.ai || {})[state.region];
+    if (ai) {
+      const aiDays = []; for (let d = new Date(start); d <= end; d = new Date(+d + 864e5)) aiDays.push(d.toISOString().slice(0, 10));
+      const byDay = kind => { const m = Object.fromEntries(ai.new_by_day[kind] || []); return aiDays.map(d => m[d] || 0); };
+      const roll = a => a.map((_, i) => { const w = a.slice(Math.max(0, i - 6), i + 1); return w.reduce((x, y) => x + y, 0) / w.length; });
+      const totals = aiDays.map((_, i) => ["builds", "uses", "none"].reduce((s, kk) => s + byDay(kk)[i], 0));
+      const totalRoll = roll(totals);
+      const aiChart = (id, kind, color, noteId, lead) => {
+        const counts = roll(byDay(kind));
+        const share = counts.map((c, i) => totalRoll[i] ? 100 * c / totalRoll[i] : null);
+        const c = ai.current[kind], all = ["builds", "uses", "none"].reduce((s, kk) => s + ai.current[kk].open_jobs, 0);
+        const others = ai.current.none;
+        const langs = Object.entries(c.languages).slice(0, 3).map(([l, n]) => `${l} ${Math.round(100 * n / c.open_jobs)}%`).join(", ");
+        document.getElementById(noteId).textContent =
+          `${lead} Open now: ${fmt(c.open_jobs)} (${all ? Math.round(100 * c.open_jobs / all) : 0}% of engineering jobs); median pay ${k(c.mid_p50)} vs ${k(others.mid_p50)} for jobs without AI. Main languages: ${langs || "–"}.`;
+        chart(id, { data: { labels: aiDays, datasets: [
+            { type: "line", label: "New a day", data: counts, yAxisID: "y", borderColor: color, backgroundColor: color + "22",
+              fill: true, tension: .3, pointRadius: 0, borderWidth: 2 },
+            { type: "line", label: "Share of postings", data: share, yAxisID: "share", borderColor: css("--muted"),
+              borderDash: [4, 4], tension: .3, pointRadius: 0, borderWidth: 1.5, spanGaps: true } ] },
+          options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+            plugins: { legend: { labels: { boxWidth: 10 } }, tooltip: { callbacks: { label: t => t.dataset.yAxisID === "share"
+              ? ` Share: ${t.raw == null ? "–" : t.raw.toFixed(0) + "%"}` : ` ${t.raw.toFixed(1)} new a day` } } },
+            scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } },
+                      y: { beginAtZero: true, grid: { color: css("--grid") } },
+                      share: { position: "right", min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { display: false } } } } });
+      };
+      aiChart("aiBuildChart", "builds", COLORS["Python"], "aiBuildNote", "AI in the title, or the advert asks to build AI agents, apps, bots or features.");
+      aiChart("aiUseChart", "uses", COLORS["TypeScript/JavaScript"], "aiUseNote", "Asks you to use AI tools (Copilot, Cursor, Claude Code, AI-assisted development) without building AI.");
+    }
+
+    const wm = (D.work_modes || {})[state.region];
+    if (wm) {
+      const MODE_COLORS = { "remote": css("--accent"), "hybrid": COLORS["TypeScript/JavaScript"], "on-site": COLORS["Java/Kotlin"], "not stated": css("--rule") };
+      const modes = ["remote", "hybrid", "on-site", "not stated"];
+      const all = modes.reduce((s, m) => s + wm.overall[m].open_jobs, 0);
+      document.getElementById("modeNote").textContent = "Open engineering jobs by work mode (from the site's location and flags, else the advert's text). " +
+        modes.map(m => `${m[0].toUpperCase() + m.slice(1)} ${all ? Math.round(100 * wm.overall[m].open_jobs / all) : 0}%` +
+          (wm.overall[m].mid_p50 ? ` (median ${k(wm.overall[m].mid_p50)})` : "")).join(" · ") + ".";
+      const rowsL = ["All languages", ...selected().filter(l => wm.languages[l])];
+      const counts = l => l === "All languages" ? Object.fromEntries(modes.map(m => [m, wm.overall[m].open_jobs])) : wm.languages[l];
+      chart("modeChart", { type: "bar", data: { labels: rowsL, datasets: modes.map(m => ({ label: m,
+          data: rowsL.map(l => { const c = counts(l), t = modes.reduce((s, x) => s + (c[x] || 0), 0); return t ? 100 * (c[m] || 0) / t : 0; }),
+          backgroundColor: MODE_COLORS[m] })) },
+        options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } },
+            tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toFixed(0)}% (${fmt(counts(c.label)[c.dataset.label] || 0)} jobs)` } } },
+          scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + "%" }, grid: { color: css("--grid") } }, y: { stacked: true, grid: { display: false } } } } });
+    }
+
+    const life = (D.lifetimes || {})[state.region] || {};
+    const lifeLangs = selected().filter(l => (life[l] || {}).closed >= 10);
+    document.getElementById("lifeNote").textContent = (life.all || {}).closed
+      ? `Median days from posting to the advert leaving its company's board, for ${fmt(life.all.closed)} closed engineering adverts (median ${life.all.median_days} days). Closures are recorded from 2 October 2026, so for now this shows quick closures; it settles over the coming weeks. Languages with fewer than 10 closed adverts are left out.`
+      : "Closures are recorded from 2 October 2026: an advert counts as closed when its company's board is read and no longer lists it. Figures appear here as they accumulate.";
+    chart("lifeChart", { type: "bar", data: { labels: lifeLangs, datasets: [{ data: lifeLangs.map(l => life[l].median_days),
+        backgroundColor: lifeLangs.map(l => COLORS[l]), borderRadius: 3 }] },
+      options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: c => ` ${c.raw} days (median of ${fmt(life[c.label].closed)} closed)` } } },
+        scales: { x: { beginAtZero: true, title: { display: true, text: "Median days up" }, grid: { color: css("--grid") } }, y: { grid: { display: false } } } } });
+
+    const sc = (D.scams || {})[state.region];
+    if (sc) {
+      const pct = (a, b) => b ? (100 * a / b < 0.1 && a ? "<0.1" : (100 * a / b).toFixed(1)) + "%" : "–";
+      document.getElementById("scamNote").textContent =
+        "Signals, not verdicts: a fee or payment asked of the candidate, contact moved to Telegram or WhatsApp, ID or bank details asked for in the advert, an unnamed client, or a clone farm (a company under two years old by its domain whose many adverts are copies). Sentences that warn about such things are not counted.";
+      document.getElementById("scamKpis").innerHTML = [
+        ["Suspicious postings", pct(sc.suspicious, sc.postings), `${fmt(sc.suspicious)} of ${fmt(sc.postings)} open`],
+        ["Warn about recruitment fraud", pct(sc.warnings, sc.postings), `${fmt(sc.warnings)} adverts`],
+        ["Postings checked", fmt(sc.postings), "open in this region"],
+        ["Most common signal", Object.entries(sc.signals).sort((a, b) => b[1] - a[1])[0]?.[0] || "none", ""],
+      ].map(([l, v, s]) => `<div class="kpi"><span class="label">${l}</span><b>${v}</b><small>${s}</small></div>`).join("");
+      const sites = Object.entries(sc.sites).filter(([, v]) => v.postings >= 20).slice(0, 10);
+      chart("scamChart", { type: "bar", data: { labels: sites.map(([s]) => s), datasets: [{ label: "Suspicious",
+          data: sites.map(([, v]) => 100 * v.suspicious / v.postings), backgroundColor: css("--warn"), borderRadius: 3 }] },
+        options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: c => ` ${c.raw.toFixed(2)}% (${fmt(sites[c.dataIndex][1].suspicious)} of ${fmt(sites[c.dataIndex][1].postings)})` } } },
+          scales: { x: { beginAtZero: true, ticks: { callback: v => v + "%" }, grid: { color: css("--grid") },
+                         title: { display: true, text: "Suspicious share by source" } }, y: { grid: { display: false } } } } });
+      document.getElementById("scamTable").innerHTML = sc.examples.length
+        ? `<thead><tr><th>Company</th><th>Signals</th><th>Postings</th></tr></thead><tbody>` +
+          sc.examples.map(e => `<tr><td>${e.company}</td><td style="text-align:left">${e.signals}</td><td class="mono">${fmt(e.postings)}</td></tr>`).join("") + `</tbody>`
+        : `<tbody><tr><td>No suspicious postings in this region.</td></tr></tbody>`;
+    }
+
+    const comp = (D.companies || {})[state.region];
+    if (comp) {
+      const cov = D.companies.coverage || {};
+      document.getElementById("ageNote").textContent =
+        `Open engineering jobs (bars) and median pay (line), by company age. Founding year known for ${fmt(cov.with_founding_year)} of ${fmt(cov.companies)} companies (${fmt(cov.from_wikidata)} from Wikidata, the rest from their domain).`;
+      const co = comp.cohorts;
+      chart("ageChart", { data: { labels: co.map(c => c.label), datasets: [
+          { type: "bar", label: "Open jobs", data: co.map(c => c.open_jobs), yAxisID: "y",
+            backgroundColor: co.map(c => c.label === "unknown" ? css("--rule") : css("--accent")), borderRadius: 3 },
+          { type: "line", label: "Median pay", data: co.map(c => c.mid_p50), yAxisID: "pay", borderColor: COLORS["TypeScript/JavaScript"],
+            backgroundColor: COLORS["TypeScript/JavaScript"], pointRadius: 4, tension: .2, spanGaps: true } ] },
+        options: { maintainAspectRatio: false, plugins: { legend: { labels: { boxWidth: 10 } },
+            tooltip: { callbacks: { afterLabel: c => c.dataset.type === "bar"
+              ? `${fmt(co[c.dataIndex].companies)} companies, ${co[c.dataIndex].jobs_per_company ?? "–"} jobs each`
+              : `${fmt(co[c.dataIndex].with_pay)} stated ranges`, label: c => c.dataset.type === "line" ? ` Median pay ${k(c.raw)}` : ` ${fmt(c.raw)} open jobs` } } },
+          scales: { y: { beginAtZero: true, grid: { color: css("--grid") } },
+                    pay: { position: "right", beginAtZero: true, ticks: { callback: v => "€" + v / 1000 + "k" }, grid: { display: false } },
+                    x: { grid: { display: false } } } } });
+      const sel = selected();
+      const known = co.filter(c => c.open_jobs);
+      chart("ageStackChart", { type: "bar", data: { labels: known.map(c => c.label), datasets: [
+          ...sel.map(l => ({ label: l, data: known.map(c => c.languages[l] || 0), backgroundColor: COLORS[l] })),
+          { label: "Other", data: known.map(c => Math.max(0, 100 - sel.reduce((s, l) => s + (c.languages[l] || 0), 0))), backgroundColor: css("--rule") } ] },
+        options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } },
+            tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toFixed(0)}%` } } },
+          scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + "%" }, grid: { color: css("--grid") } }, y: { stacked: true, grid: { display: false } } } } });
+      const year = new Date().getFullYear();
+      document.getElementById("hirers").innerHTML =
+        `<thead><tr><th>Company</th><th>Founded</th><th>Age</th><th>Open jobs</th><th>Main language</th><th>Median pay</th></tr></thead><tbody>` +
+        comp.top.map(c => `<tr><td>${c.name}</td><td class="mono">${c.founded ? (c.source === "domain" ? "≈" : "") + c.founded : "–"}</td>` +
+          `<td class="mono">${c.founded ? year - c.founded + " y" : "–"}</td><td class="mono">${fmt(c.open_jobs)}</td>` +
+          `<td>${c.main_language}</td><td class="mono">${k(c.mid_p50)}</td></tr>`).join("") + `</tbody>`;
+    }
+
+    const rows = langs.map(l => { const s = cur[l]; const thin = s.with_pay < 10 ? ' class="mono thin"' : ' class="mono"';
+      const index = s.mid_p50 && market ? Math.round(100 * s.mid_p50 / market) : null;
+      return `<tr><td>${l}</td><td class="mono">${fmt(s.open_jobs)}</td><td class="mono">${(100 * s.open_jobs / total).toFixed(1)}%</td>` +
+        `<td${thin}>${index ?? "–"}</td><td class="mono">${fmt(s.with_pay)}</td>` +
+        `<td${thin}>${k(s.min_p50)}</td><td${thin}>${k(s.max_p50)}</td><td${thin}>${k(s.mid_p25)} – ${k(s.mid_p75)}</td></tr>`; });
+    document.getElementById("table").innerHTML =
+      `<thead><tr><th>Language</th><th>Open jobs</th><th>Share</th><th>Pay index</th><th>With pay</th><th>Median min</th><th>Median max</th><th>Middle half</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+  }
+
+  render();
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+})();
+</script>

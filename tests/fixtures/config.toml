@@ -1,0 +1,213 @@
+# The config the rule tests run against (tests/test_scanner.py): a PHP-first
+# profile in one EU country. Not an example to copy: see scanner/config.example.toml.
+
+[run]
+# Local hours at which the jobs found since the last email are sent, in one
+# email each; scans in between only queue them (pending.json in the profile directory).
+send_hours = [8, 14]
+# How far back the first scan of a new source or board may reach, in hours.
+# Anything older is recorded as seen without being sent.
+baseline_hours = 72
+# Company boards imported into the rotation (--import-boards) are read this
+# many per run, longest-unread first; boards that yield a wanted job become
+# "hot" and are read every run.
+cold_boards_per_run = 250
+
+[email]
+# SMTP in Symfony Mailer DSN form, read from this environment variable,
+# e.g. smtp://user:password@smtp.example.com:587
+dsn_env = "JOB_SCANNER_MAILER_DSN"
+from_env = "JOB_SCANNER_MAIL_FROM"
+to = "you@example.com"
+
+[search]
+# LinkedIn-style query; the terms also filter the board APIs.
+terms = '"PHP" OR "Symfony" OR "Laravel"'
+# A job must mention at least one of these (title or description) ...
+include = ["PHP", "Symfony", "Laravel", "TypeScript", "React", "Python", "Node.js", "Magento", "Shopware", "WooCommerce", "PrestaShop"]
+# Stack terms searched on the company boards and feeds only (not on LinkedIn,
+# whose result cap they would crowd; LinkedIn has its own searches below).
+board_terms = ["TypeScript"]
+# Jobs whose stack is only one of these (no PHP/Symfony/Laravel or e-commerce
+# platform, no wanted title) pass only when they match two of the
+# strengths: React/Node/Next counts once, each group of domain words once.
+# They are emailed after the PHP jobs, in their own section.
+secondary_stack = ["TypeScript", "React", "Python", "Node.js"]
+secondary_with = ["React", "Node.js", "Next.js"]
+secondary_min_strengths = 2
+strengths = [
+  ["payments", "payment", "checkout", "PayPal", "Stripe", "Adyen", "billing"],
+  ["integrations", "integration", "third-party APIs", "webhooks"],
+  ["e-commerce", "ecommerce", "Shopify", "WooCommerce", "Magento"],
+  ["A/B", "experimentation", "experiments", "conversion", "funnel"],
+  ["LLM", "LLMs", "Claude", "Anthropic", "MCP", "OpenAI"],
+  ["data migration", "migrations"],
+]
+# Role titles searched on the boards and feeds besides the stack terms above.
+# They count only in a job's title: "AI" or "integrations" in a description
+# says nothing, and nearly every advert has one of them.
+title_terms = [
+  "AI Engineer", "AI Developer", "AI Software Engineer", "LLM",
+  "Integration Engineer", "Integration Developer", "Integrations",
+  "E-commerce", "Ecommerce", "Magento", "Shopware", "Shopify", "WooCommerce", "PrestaShop",
+]
+# Titles searched on the boards and feeds like title_terms, but still held to
+# the strengths rule above: a full-stack job that is only TypeScript/React
+# passes with two of the strengths, as when it is found by "TypeScript".
+board_title_terms = ["Full Stack", "Full-Stack", "Fullstack"]
+# ... and none of these.
+exclude = [
+  "Spring Boot", "Java 8", "Java 11", "Java 17", "Java 21", "Kotlin", "Salesforce", "SAP ABAP",
+  # Industries not wanted: gambling and adult content
+  "iGaming", "igaming", "online casino", "casino", "casinos", "gambling", "sportsbook", "sports betting",
+  "betting", "slot games", "slots", "poker", "lottery", "bookmaker", "prediction market", "prediction markets",
+  "adult entertainment", "adult content", "adult industry", "porn", "pornography", "xxx", "OnlyFans",
+  "webcam models", "cam models",
+]
+# Titles containing any of these are dropped.
+exclude_titles = [
+  "junior", "intern", "internship", "graduate", "trainee", "working student", "werkstudent",
+  # Titles written for a local-language role
+  "Entwickler", "Entwicklerin", "Anwendungsentwickler",
+  "Softwareentwickler", "Développeur", "Développeuse", "Desarrollador", "Desarrollo", "Sviluppatore",
+  "Programador", "Ontwikkelaar", "Ingeniero", "Ingeniera", "Dutch required", "German required", "French required",
+  # Other kinds of role that LinkedIn's loose search brings in
+  "QA", "Quality", "Tester", "Test Engineer", "Security", "Analyst", "Salesforce", "SAP",
+  "Oracle", "Networking", "Java", ".NET", "C#", "iOS", "Android", "Data Engineer",
+  "Data Scientist", "Machine Learning Engineer", "Embedded", "Mainframe", "Support", "Supporto", "Tecnico",
+  # Non-developer roles the e-commerce titles bring in
+  "Marketing", "Specialist", "Coordinator", "Assistant", "Merchandiser", "Sales", "Account Manager",
+  # Management and Microsoft 365 roles
+  "Engineering Manager", "M365", "Microsoft 365", "SharePoint", "Power Platform", "Dynamics 365",
+  "Account Executive", "Operations", "E-commerce Manager", "Ecommerce Manager", "Head of E-commerce", "Head of Ecommerce",
+]
+# Agencies and aggregators that repost other companies' adverts.
+# Gender tags required in German and French adverts: dropped only when the
+# advert itself is not in English.
+exclude_titles_unless_english = ["m/w/d", "w/m/d", "m/f/d", "w/m/x", "m/w/x", "w/m/d/x", "[gn]", "H/F", "F/H"]
+exclude_companies = ["Jobgether", "Wiraa", "Tenth Revolution Group"]
+# Companies already applied to; a new role there is flagged, not dropped.
+applied_companies = []
+
+[eligibility]
+# Where you can work from. "home" is always fine; "contract_ok" is fine
+# as a contractor (flagged in the email).
+home = ["Portugal"]
+# In the home country, on-site or hybrid is fine only in these cities.
+home_cities = ["Lisbon", "Lisboa"]
+contract_ok = [
+  "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Czech Republic",
+  "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland",
+  "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland",
+  "Romania", "Slovakia", "Slovenia", "Spain", "Sweden",
+]
+# Regions that include you.
+regions_ok = ["Europe", "EU", "EMEA", "European Union", "Worldwide", "Anywhere", "Global", "CET", "EET"]
+# Location text that rules a job out when nothing above matches.
+regions_no = ["United States", "USA", "US only", "Canada", "Latin America", "LATAM", "North America", "India", "Philippines", "Australia", "Mexico", "Brazil", "Argentina"]
+
+[linkedin]
+enabled = true
+hours_old = 24
+results_wanted = 25
+max_applicants = 120
+
+# One search per entry, remote only; "terms" defaults to [search].terms.
+[[linkedin.searches]]
+location = "Portugal"
+
+[[linkedin.searches]]
+location = "European Union"
+results_wanted = 50
+
+[[linkedin.searches]]
+location = "Portugal"
+terms = '"TypeScript" OR "React" OR "Python" OR "Node.js" OR "Full Stack"'
+
+[[linkedin.searches]]
+location = "European Union"
+terms = '"AI Engineer" OR "Integration Engineer" OR "Integrations Engineer" OR "E-commerce Developer" OR "Magento" OR "Shopware" OR "Shopify Developer"'
+
+[[linkedin.searches]]
+location = "European Union"
+terms = '"Full Stack" OR "Fullstack" OR "Full-Stack"'
+
+[himalayas]
+enabled = true
+country = "Portugal"
+hours_old = 24
+
+# Boards and searches across many companies.
+[workable]
+enabled = true
+hours_old = 24
+
+[welcome_to_the_jungle]
+enabled = true
+hours_old = 24
+
+[larajobs]
+enabled = true
+hours_old = 48
+
+[symfony_jobs]
+enabled = true
+hours_old = 48
+
+[joburiit]
+enabled = true
+hours_old = 48
+
+[peviitor]
+enabled = true
+hours_old = 24
+
+[bestjobs]
+enabled = true
+
+[ejobs]
+enabled = true
+hours_old = 48
+
+[nofluffjobs]
+enabled = true
+hours_old = 48
+
+[djinni]
+enabled = true
+hours_old = 48
+
+[remote_rocketship]
+enabled = true
+hours_old = 72
+
+[hacker_news]
+enabled = true
+hours_old = 48
+
+[devjob_ro]
+enabled = true
+hours_old = 48
+
+[phpjobs_ro]
+# Off: almost abandoned (newest job January 2026 when checked on 2026-09-30).
+enabled = false
+hours_old = 48
+
+# Company boards read on every run. Boards found in LinkedIn and Himalayas
+# results are added to the state database automatically.
+
+[hipo]
+# hipo.ro: full-text search per term, then each job page. Dates are days, so
+# 48 hours keeps yesterday's postings.
+enabled = true
+hours_old = 48
+[boards]
+greenhouse = []
+ashby = []
+lever = []
+personio = []
+smartrecruiters = []
+teamtailor = []
+recruitee = []
+gem = []

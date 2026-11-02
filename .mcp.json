@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bisect": {
+      "type": "http",
+      "url": "https://bisect.eu/api/mcp"
+    }
+  }
+}

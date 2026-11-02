@@ -1,0 +1,166 @@
+# An example profile: a Laravel + Vue developer looking for remote work in the EU.
+#
+# setup.sh copies this to $JOB_SCANNER_HOME/config.toml (default
+# ~/.job-scanner/config.toml), outside the repository. Edit that copy, never
+# this file. Secrets (the SMTP password) do not go here: they go in
+# $JOB_SCANNER_HOME/env.
+
+[profile]
+# Added to the User-Agent of the company lookups (scanner/companies.py), so a
+# site that minds can tell you. Leave empty for a plain User-Agent.
+contact = ""                       # e.g. "you@example.com"
+# The launchd agent's name; the backup agent is "<label>.backup".
+launchd_label = "job-scanner"
+
+[run]
+# Local hours at which the jobs found since the last email are sent, one email
+# each; scans in between only queue them (pending.json in the profile directory).
+send_hours = [8, 14]
+# How far back the first scan of a new source or board may reach, in hours.
+# Anything older is recorded as seen without being sent.
+baseline_hours = 72
+# Company boards imported into the rotation (--import-boards) are read this
+# many per run, longest-unread first; boards that yield a wanted job become
+# "hot" and are read every run.
+cold_boards_per_run = 250
+# Where the state database lives. Default: state.sqlite3 in the profile directory.
+# state_path = "~/.job-scanner/state.sqlite3"
+
+[email]
+# SMTP in Symfony Mailer DSN form (smtp://user:password@smtp.example.com:587),
+# read from the environment variables named here; set them in the env file.
+dsn_env = "JOB_SCANNER_MAILER_DSN"
+from_env = "JOB_SCANNER_MAIL_FROM"
+to = "you@example.com"
+
+[search]
+# LinkedIn-style query; the terms also filter the company boards and feeds.
+terms = '"Laravel" OR "Vue"'
+# A job must mention at least one of these (title or description) ...
+include = ["Laravel", "PHP", "Vue", "Vue.js", "Nuxt", "Inertia"]
+# Stack terms searched on the company boards and feeds only (not on LinkedIn).
+board_terms = ["Vue"]
+# Jobs whose stack is only one of these (none of the main stack above, no
+# wanted title) pass only when they match at least secondary_min_strengths of
+# your strengths: a word from secondary_with counts once, and each group of
+# words in strengths counts once. They come last in the email, in their own
+# section.
+secondary_stack = ["TypeScript", "React", "Node.js"]
+secondary_with = ["Vue", "Nuxt"]
+secondary_min_strengths = 2
+strengths = [
+  ["payments", "checkout", "Stripe", "billing"],
+  ["SaaS", "multi-tenant"],
+]
+# Role titles searched on the boards and feeds besides the stack terms. They
+# count only in a job's title.
+title_terms = ["Laravel Developer", "PHP Developer"]
+# Titles searched like title_terms, but still held to the strengths rule.
+board_title_terms = ["Full Stack", "Full-Stack", "Fullstack"]
+# A job mentioning any of these is dropped.
+exclude = ["casino", "gambling", "sports betting"]
+# A title containing any of these is dropped.
+exclude_titles = ["junior", "intern", "internship", "trainee", "QA", "Tester", "Data Engineer", "Sales"]
+# Dropped only when the advert itself is not in English (gender tags in
+# German and French titles, for example).
+exclude_titles_unless_english = ["m/w/d", "w/m/d", "H/F", "F/H"]
+# Agencies and aggregators that repost other companies' adverts.
+exclude_companies = []
+# Companies already applied to; a new role there is flagged, not dropped.
+applied_companies = []
+
+[eligibility]
+# Where you can work from. "home" is always fine.
+home = ["Your Country"]
+# In the home country, on-site or hybrid is fine only in these cities.
+home_cities = ["Your City"]
+# Countries where a job is fine as a contractor (flagged in the email).
+contract_ok = ["Germany", "Netherlands", "Spain", "Portugal"]
+# Region names that include you.
+regions_ok = ["Europe", "EU", "EMEA", "European Union", "Worldwide", "Anywhere", "Global", "CET"]
+# Location text that rules a job out when nothing above matches.
+regions_no = ["United States", "USA", "US only", "Canada", "LATAM", "India", "Australia"]
+
+[linkedin]
+enabled = true
+hours_old = 24
+results_wanted = 25
+# Jobs with this many applicants or more are dropped.
+max_applicants = 120
+
+# One search per entry, remote only; "terms" defaults to [search].terms.
+[[linkedin.searches]]
+location = "European Union"
+results_wanted = 50
+
+[[linkedin.searches]]
+location = "Your Country"
+terms = '"Vue" OR "Nuxt" OR "Full Stack"'
+
+[himalayas]
+enabled = true
+country = "Your Country"
+hours_old = 24
+
+# Boards and searches across many companies: enabled, and how many hours back
+# a posting may be. A source not listed here is off.
+[workable]
+enabled = true
+hours_old = 24
+
+[welcome_to_the_jungle]
+enabled = true
+hours_old = 24
+
+[larajobs]
+enabled = true
+hours_old = 48
+
+[nofluffjobs]
+enabled = true
+hours_old = 48
+
+[remote_rocketship]
+# Off by default: it reads PHP, Laravel, full-stack and backend roles only, and
+# has those pages for some countries only. To use it, check that
+# https://www.remoterocketship.com/country/<your-country>/jobs/backend-developer
+# lists jobs (it does for portugal and romania), then enable it with that name.
+enabled = false
+hours_old = 72
+# location = "portugal"
+
+[hacker_news]
+enabled = true
+hours_old = 48
+
+# Romanian boards (bestjobs, ejobs, hipo, joburiit, peviitor, devjob_ro,
+# phpjobs_ro) and djinni and symfony_jobs work the same way: add a section
+# with enabled = true to use one.
+
+# Company boards read on every run, by applicant tracking system. Boards found
+# in LinkedIn and Himalayas results are added to the state database on their own.
+[boards]
+greenhouse = []
+ashby = []
+lever = []
+personio = []
+smartrecruiters = []
+teamtailor = []
+recruitee = []
+gem = []
+
+[backup]
+# python -m scanner.backup (the <label>.backup agent, daily at 03:00).
+# Default folder: backups/ in the profile directory.
+# dir = "~/.job-scanner/backups"
+# A second copy of the precious tables, off this disk: an iCloud Drive folder,
+# a synced folder, or a private git repository you commit yourself.
+# offsite_dir = "~/Library/Mobile Documents/com~apple~CloudDocs/job-scanner-backups"
+keep_daily = 7
+keep_weekly = 4
+keep_precious_days = 30
+
+[review]
+# The application review screen (python -m scanner.review), for a jobs
+# folder laid out as scanner/review.py describes. Off unless this is set.
+# jobs_dir = "~/path/to/jobs"

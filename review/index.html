@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Application Review</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root {
+  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
+  --accent: #2f5d8a; --accent-ink: #ffffff; --hover: #efede8; --active: #e3ecf5;
+  --good: #2e7d4f; --ok: #b7791f; --bad: #b83a3a; --warn-bg: #fff4dd; --warn-ink: #7a5300;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9a94; --line: #34332f;
+    --accent: #7fb0e0; --accent-ink: #10202f; --hover: #2a2a27; --active: #24384c;
+    --good: #5fbf86; --ok: #e0a84a; --bad: #e57373; --warn-bg: #3a2f17; --warn-ink: #f0cf8a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.app { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; height: 100vh; }
+aside, .feedback { background: var(--panel); border-color: var(--line); border-style: solid; overflow: auto; }
+aside { border-width: 0 1px 0 0; display: flex; flex-direction: column; }
+.feedback { border-width: 0 0 0 1px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.tools { padding: 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; position: sticky; top: 0; background: var(--panel); }
+.tools h1 { font-size: 15px; margin: 0; }
+.tools .count { color: var(--muted); font-weight: 400; }
+input[type=search], select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+ul { list-style: none; margin: 0; padding: 0; }
+li.item { padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+li.item:hover { background: var(--hover); }
+li.item.active { background: var(--active); }
+.item .co { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.item .role { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; border: 1.5px solid var(--muted); }
+.dot.good { background: var(--good); border-color: var(--good); }
+.dot.ok { background: var(--ok); border-color: var(--ok); }
+.dot.bad { background: var(--bad); border-color: var(--bad); }
+.dot.noted { background: var(--muted); }
+main { overflow: auto; display: flex; flex-direction: column; min-width: 0; }
+.head { padding: 16px 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 1; }
+.head h2 { margin: 0 0 4px; font-size: 18px; }
+.facts { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.facts a { color: var(--accent); }
+.nav { margin-left: auto; display: flex; gap: 6px; }
+.tabs { display: flex; gap: 2px; margin-top: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.body { padding: 16px 20px 40px; }
+.doc { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 860px; }
+.doc h3 { white-space: normal; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.doc h3:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.doc a { color: var(--accent); }
+.tracking { font-family: var(--mono); font-size: 12px; background: var(--warn-bg); color: var(--warn-ink); padding: 0 4px; border-radius: 3px; cursor: not-allowed; }
+.note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; max-width: 860px; }
+.pages canvas { display: block; max-width: 100%; height: auto; margin: 0 auto 14px; box-shadow: 0 1px 4px rgba(0,0,0,.18); background: #fff; }
+.empty { color: var(--muted); padding: 40px 20px; }
+button.btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button.btn:hover { background: var(--hover); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.feedback h3 { margin: 0; font-size: 15px; }
+.feedback p.help { margin: 0; color: var(--muted); font-size: 12.5px; }
+.ratings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ratings button { font: inherit; padding: 7px 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; font-size: 13px; }
+.ratings button.on[data-r=good] { background: var(--good); border-color: var(--good); color: #fff; }
+.ratings button.on[data-r=ok] { background: var(--ok); border-color: var(--ok); color: #fff; }
+.ratings button.on[data-r=bad] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.feedback textarea { flex: 1; min-height: 220px; resize: vertical; line-height: 1.45; }
+.saverow { display: flex; align-items: center; gap: 10px; }
+.status { color: var(--muted); font-size: 12.5px; }
+kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 260px minmax(0, 1fr); }
+  .feedback { grid-column: 2; border-width: 1px 0 0 0; }
+  .app { height: auto; min-height: 100vh; }
+  main { overflow: visible; }
+}
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr; }
+  aside { max-height: 40vh; border-width: 0 0 1px 0; }
+  .feedback { grid-column: 1; }
+  .head, .body { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="tools">
+      <h1 style="display:flex;align-items:baseline;gap:6px">Applications <span class="count" id="count"></span>
+        <a href="/market" style="margin-left:auto;font-size:13px;font-weight:400;color:var(--accent)">Market ↗</a></h1>
+      <input type="search" id="q" placeholder="Search company or role">
+      <select id="filter">
+        <option value="all">All</option>
+        <option value="todo">Not reviewed yet</option>
+        <option value="done">Reviewed</option>
+      </select>
+    </div>
+    <ul id="list"></ul>
+  </aside>
+  <main>
+    <div class="head" id="head"></div>
+    <div class="body" id="body"><div class="empty">Loading…</div></div>
+  </main>
+  <section class="feedback" id="feedback" hidden>
+    <h3>Your feedback</h3>
+    <p class="help">Read before every new application. Say what to keep, what to change, what not to do again.</p>
+    <div class="ratings" id="ratings">
+      <button data-r="good" title="Would send it again as it is">Good</button>
+      <button data-r="ok" title="Fine, but change something next time">Needs work</button>
+      <button data-r="bad" title="Should not have gone out like this">Wrong</button>
+    </div>
+    <textarea id="notes" placeholder="e.g. Opening too long; lead with the payments numbers. Don't mention the Price Tracker for backend roles."></textarea>
+    <div class="saverow">
+      <button class="btn primary" id="save">Save</button>
+      <span class="status" id="status"></span>
+    </div>
+    <p class="help"><kbd>↑</kbd> <kbd>↓</kbd> or <kbd>j</kbd> <kbd>k</kbd> move between applications (unsaved notes are saved first). <kbd>⌘</kbd>+<kbd>Enter</kbd> saves.</p>
+  </section>
+</div>
+<script>
+const TRACKING = /bisect\.eu\/(?:cv|api\/public\/cv)\//;
+const $ = id => document.getElementById(id);
+let items = [], visible = [], current = null, tab = "application", loaded = { rating: null, notes: "" }, rating = null, pdfToken = 0;
+
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// URLs become links, except Bisect's tracking links: opening one counts as a read.
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<]+[^\s<.,;:)'"]/g, url => {
+    const raw = url.replace(/&amp;/g, "&");
+    if (TRACKING.test(raw)) return `<span class="tracking" title="Tracking link: opening it counts as the company reading the CV">${url}</span>`;
+    return `<a href="${url}" target="_blank" rel="noreferrer noopener">${url}</a>`;
+  });
+}
+
+// Letter files: "--- Heading ---" lines and lines underlined with dashes become headings.
+function renderDoc(text) {
+  const lines = String(text || "").replace(/\s+$/, "").split("\n");
+  let html = "", buffer = [];
+  const flush = () => { if (buffer.length) html += linkify(buffer.join("\n").replace(/^\n+|\n+$/g, "")); buffer = []; };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i], next = lines[i + 1] || "";
+    const marker = line.match(/^-{3}\s+(.+?)(?:\s+-{3,})?\s*$/);
+    if (marker) { flush(); html += `<h3>${esc(marker[1])}</h3>`; continue; }
+    if (line.trim() && /^-{4,}\s*$/.test(next)) { flush(); html += `<h3>${esc(line.trim())}</h3>`; i++; continue; }
+    if (/^#{1,3}\s/.test(line)) { flush(); html += `<h3>${esc(line.replace(/^#+\s*/, ""))}</h3>`; continue; }
+    buffer.push(line);
+  }
+  flush();
+  return `<div class="doc">${html}</div>`;
+}
+
+function dirty() {
+  return current && (rating !== loaded.rating || $("notes").value.trim() !== loaded.notes.trim());
+}
+
+async function load() {
+  items = await (await fetch("/api/applications")).json();
+  renderList();
+  const wanted = decodeURIComponent(location.hash.slice(1));
+  open(items.find(i => i.slug === wanted) ? wanted : visible[0]?.slug);
+}
+
+function renderList() {
+  const q = $("q").value.trim().toLowerCase(), f = $("filter").value;
+  visible = items.filter(i => (!q || `${i.title} ${i.slug}`.toLowerCase().includes(q))
+    && (f === "all" || (f === "todo") === !i.feedback));
+  $("count").textContent = `${visible.length}${visible.length !== items.length ? " of " + items.length : ""}`;
+  $("list").innerHTML = visible.map(i => {
+    const fb = i.feedback, dot = fb ? (fb.rating || "noted") : "";
+    const role = i.title.slice(i.company.length).replace(/^\s*[—–-]\s*/, "");
+    return `<li class="item${i.slug === current ? " active" : ""}" data-slug="${esc(i.slug)}">
+      <div class="co"><span class="dot ${dot}" title="${fb ? "Reviewed" : "Not reviewed"}"></span>${esc(i.company)}</div>
+      <div class="role" title="${esc(role)}">${esc(role)}</div>
+      <div class="meta"><span>${esc(i.pending ? "not sent" : i.sent || i.date || "")}</span>${i.has_cv ? "" : "<span>no CV file</span>"}</div>
+    </li>`;
+  }).join("");
+}
+
+async function open(slug, keepTab) {
+  if (!slug) { $("body").innerHTML = `<div class="empty">No applications match.</div>`; $("head").innerHTML = ""; return; }
+  if (dirty()) await save();
+  current = slug;
+  if (!keepTab) tab = "application";
+  history.replaceState(null, "", "#" + encodeURIComponent(slug));
+  renderList();
+  document.querySelector("li.item.active")?.scrollIntoView({ block: "nearest" });
+  const item = await (await fetch("/api/applications/" + encodeURIComponent(slug))).json();
+  if (current !== slug) return;
+  const fb = item.feedback || {};
+  loaded = { rating: fb.rating || null, notes: fb.notes || "" };
+  rating = loaded.rating;
+  $("notes").value = loaded.notes;
+  $("feedback").hidden = false;
+  showRating();
+  $("status").textContent = item.feedback ? statusText(fb) : "Not reviewed yet";
+  renderHead(item);
+  renderTab(item);
+  window.currentItem = item;
+}
+
+function statusText(fb) {
+  if (!fb.updated) return "";
+  return fb.status === "folded" ? `Folded into the rules · ${fb.updated}` : `Saved ${fb.updated} · read before the next application`;
+}
+
+function commonPrefix(names) {
+  return names.reduce((a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return a.slice(0, i); }, names[0] || "");
+}
+
+function renderHead(item) {
+  const pos = visible.findIndex(i => i.slug === item.slug);
+  const tabs = [["application", "Application"]];
+  const covers = item.files.filter(f => /cover/i.test(f.label)).length;
+  // Several cover letters: name each by what follows the part their file names share.
+  const shared = commonPrefix(item.files.filter(f => /cover/i.test(f.label)).map(f => f.label)).replace(/[^-]*$/, "");
+  item.files.forEach((f, n) => tabs.push(["file" + n,
+    f.kind === "cv" ? "CV"
+      : f.kind === "text" ? "Letter (Markdown)"
+      : !/cover/i.test(f.label) ? "Letter (PDF)"
+      : covers > 1 ? "Cover letter · " + f.label.slice(shared.length).replace(/\.pdf$/, "").replace(/-/g, " ")
+      : "Cover letter"]));
+  if (item.advert) tabs.push(["advert", "Advert"]);
+  if (!tabs.some(t => t[0] === tab)) tab = "application";
+  $("head").innerHTML = `
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="min-width:0"><h2>${esc(item.title)}</h2>
+        <div class="facts">
+          <span>${item.pending ? "Not sent yet" : "Sent " + esc(item.sent || "date not recorded")}</span>
+          ${item.advert_url ? `<a href="${esc(item.advert_url)}" target="_blank" rel="noreferrer noopener">Advert ↗</a>` : ""}
+          ${item.bisect_id ? `<span title="Bisect application id">Bisect ${esc(item.bisect_id.slice(0, 8))}…</span>` : ""}
+          <span>${esc(item.slug)}.txt</span>
+        </div></div>
+      <div class="nav">
+        <button class="btn" id="prev" ${pos <= 0 ? "disabled" : ""} title="Previous (k)">↑</button>
+        <button class="btn" id="next" ${pos < 0 || pos >= visible.length - 1 ? "disabled" : ""} title="Next (j)">↓</button>
+      </div>
+    </div>
+    <div class="tabs">${tabs.map(([k, label]) => `<button data-tab="${k}" class="${k === tab ? "on" : ""}">${esc(label)}</button>`).join("")}</div>`;
+  $("prev").onclick = () => step(-1);
+  $("next").onclick = () => step(1);
+  $("head").querySelectorAll(".tabs button").forEach(b => b.onclick = () => { tab = b.dataset.tab; renderHead(item); renderTab(item); });
+}
+
+function renderTab(item) {
+  const body = $("body");
+  pdfToken++;
+  if (tab === "application") return body.innerHTML = renderDoc(item.text);
+  if (tab === "advert") return body.innerHTML = `<div class="note">The advert as saved when applying; the live one may have changed or closed.</div>` + renderDoc(item.advert);
+  const file = item.files[+tab.slice(4)];
+  if (file.kind === "text") return body.innerHTML = renderDoc(file.text);
+  const later = item.sent && file.saved > item.sent;
+  body.innerHTML = (later ? `<div class="note">Fetched from Bisect on ${esc(file.saved)}, after the send (${esc(item.sent)}). It is the same version and tracking link, but the CV may have been edited since.</div>` : "")
+    + `<div class="pages" id="pages"><div class="empty">Rendering ${esc(file.label)}…</div></div>`;
+  renderPdf("/files/" + file.name.split("/").map(encodeURIComponent).join("/"), pdfToken);
+}
+
+// Drawn to canvas with no link layer, so nothing in the PDF can be clicked.
+async function renderPdf(url, token) {
+  const box = $("pages");
+  if (!window.pdfjsLib) { box.innerHTML = `<div class="empty">The PDF viewer could not load (offline?). The file is at ${esc(url)}; open it from disk rather than following its links.</div>`; return; }
+  try {
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    if (token !== pdfToken) return;
+    box.innerHTML = "";
+    const width = Math.min(box.clientWidth || 800, 860);
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      if (token !== pdfToken) return;
+      const base = page.getViewport({ scale: 1 }), scale = width / base.width, ratio = window.devicePixelRatio || 1;
+      const view = page.getViewport({ scale: scale * ratio });
+      const canvas = document.createElement("canvas");
+      canvas.width = view.width; canvas.height = view.height; canvas.style.width = width + "px";
+      box.appendChild(canvas);
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport: view }).promise;
+    }
+  } catch (e) { box.innerHTML = `<div class="empty">Could not render the PDF: ${esc(e.message)}</div>`; }
+}
+
+function showRating() {
+  $("ratings").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.r === rating));
+}
+
+async function save() {
+  if (!current) return;
+  const slug = current, notes = $("notes").value, changed = notes.trim() !== loaded.notes.trim() || rating !== loaded.rating;
+  const prior = window.currentItem?.feedback;
+  const status = changed ? "new" : (prior?.status || "new");
+  $("status").textContent = "Saving…";
+  const res = await fetch(`/api/applications/${encodeURIComponent(slug)}/feedback`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating, notes, status }),
+  });
+  const fb = await res.json();
+  if (!res.ok) { $("status").textContent = "Not saved: " + (fb.error || res.status); return; }
+  const item = items.find(i => i.slug === slug);
+  if (item) item.feedback = { rating: fb.rating, status: fb.status, updated: fb.updated };
+  if (slug === current) {
+    loaded = { rating: fb.rating || null, notes: fb.notes || "" };
+    if (window.currentItem) window.currentItem.feedback = fb;
+    $("status").textContent = statusText(fb);
+  }
+  renderList();
+}
+
+function step(delta) {
+  const pos = visible.findIndex(i => i.slug === current), next = visible[pos + delta];
+  if (next) open(next.slug, true);
+}
+
+$("ratings").addEventListener("click", e => {
+  const r = e.target.dataset?.r; if (!r) return;
+  rating = rating === r ? null : r; showRating();
+  $("status").textContent = "Unsaved";
+});
+$("notes").addEventListener("input", () => { $("status").textContent = "Unsaved"; });
+$("save").onclick = save;
+$("list").addEventListener("click", e => { const li = e.target.closest("li.item"); if (li) open(li.dataset.slug, true); });
+$("q").addEventListener("input", renderList);
+$("filter").addEventListener("change", renderList);
+document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); save(); return; }
+  if (e.target.matches("input, textarea, select")) return;
+  if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
+  if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+});
+window.addEventListener("hashchange", () => {
+  const slug = decodeURIComponent(location.hash.slice(1));
+  if (slug && slug !== current && items.some(i => i.slug === slug)) open(slug);
+});
+window.addEventListener("beforeunload", e => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+load();
+</script>
+</body>
+</html>
