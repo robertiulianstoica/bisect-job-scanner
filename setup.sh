@@ -49,6 +49,7 @@ fi
 
 git config core.hooksPath .githooks
 echo "enabled the pre-commit check (.githooks/pre-commit)"
+command -v pdftotext >/dev/null || echo "note: the ATS check and gap report need poppler: brew install poppler"
 
 cat <<NEXT
 

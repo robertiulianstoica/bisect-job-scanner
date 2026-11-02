@@ -6,6 +6,9 @@
 # $JOB_SCANNER_HOME/env.
 
 [profile]
+# Your name as it is written on your CV: the ATS check (scanner/ats.py) looks
+# for it in the first lines of the PDF. Leave empty to skip that check.
+name = ""                          # e.g. "Jane Doe"
 # Added to the User-Agent of the company lookups (scanner/companies.py), so a
 # site that minds can tell you. Leave empty for a plain User-Agent.
 contact = ""                       # e.g. "you@example.com"

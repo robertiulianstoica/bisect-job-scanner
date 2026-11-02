@@ -30,6 +30,14 @@ documentation is upstream.
 - **Tracks applications in Bisect:** from Claude Code, "I applied to Acme"
   records the application against the CV version you sent and links it to the
   job; the scanner's daily numbers fill the top of Bisect's funnel.
+- **Checks your CV against the job before you apply:** `scanner.ats` reads
+  the PDF the way an ATS parser does (text layer, contact details as text,
+  section headings, your name at the top, Bisect's tracking link) and scores
+  it against the advert: which of the skills it asks for your CV names, and
+  which it never does. `scanner.gap` does the same across every advert you
+  were sent: the skills the market keeps asking for that your CV is missing
+  or mentions only once. With Bisect, the PDF checked is the very one you
+  send, fetched through its MCP server.
 - **Checks adverts before you apply:** `scanner.vet` reports the signs of an
   advert that exists only to collect CVs: a recently registered company
   domain, one advert cloned across many countries, a company site that does
@@ -56,6 +64,7 @@ are added by name (`scanner.run --add-board greenhouse <company>`).
 ## Quick start
 
 macOS with Python 3.11 or later. About ten minutes, most of it the first scan.
+For the CV checks, also poppler (`brew install poppler`).
 
 **1. Install.**
 
@@ -144,6 +153,8 @@ On Linux everything but step 5 works; schedule the scan with cron instead:
 .venv/bin/python -m scanner.triage check                   # are the jobs you kept still open?
 .venv/bin/python -m scanner.triage funnel --days 7         # per day: found, and worth a look
 .venv/bin/python -m scanner.vet <job url>                  # is this advert from a real employer?
+.venv/bin/python -m scanner.ats cv.pdf --job <job url>     # ATS check of your CV, and its skill coverage for that job
+.venv/bin/python -m scanner.gap --cv cv.pdf --grep laravel # skills the adverts ask for that your CV lacks
 .venv/bin/python -m scanner.market                         # pay by language, from the adverts read
 .venv/bin/python -m scanner.run --add-board greenhouse <company>
 ```
@@ -168,6 +179,21 @@ Finding jobs works on its own. Tracking what you do with them is built on
 Nothing in the scanner calls Bisect by itself: Claude Code does, following
 `CLAUDE.md`. In practice:
 
+- **"I want to apply to <company>"**: Claude records the application in
+  Bisect against the CV version you choose, fetches that application's PDF
+  through the MCP server (`bisect_get_application_pdf`: the file to attach,
+  with the application's own tracking link; fetching it records nothing,
+  unlike opening the tracking link itself), saves it in your profile
+  directory and checks it against the advert:
+
+  ```bash
+  .venv/bin/python -m scanner.ats <the PDF> --job <job url> --id <Bisect application id>
+  ```
+
+  You see whether an ATS parses it cleanly, which skills the advert asks for
+  that it names, and which are missing, before you send it. A missing skill
+  is a question, not an instruction: if you have the experience, add it to
+  your CV in Bisect with its evidence; if not, say so in the letter.
 - **"I applied to <company>"**: Claude finds the job (`scanner.triage`), asks
   which CV version it went with if that is not clear, records the application
   in Bisect (company, role, advert link, date, channel) and stores the id it

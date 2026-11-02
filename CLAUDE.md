@@ -15,6 +15,30 @@ Everything personal lives in the profile directory, `$JOB_SCANNER_HOME` (by defa
 - Nothing from the profile directory goes into the repository; the pre-commit
   check (`.githooks/pre-commit`) refuses it.
 
+## When the user wants to apply to a job
+
+1. Find the job, and pick the CV version as in steps 1 and 2 below.
+2. Record the application with `bisect_create_application` (step 3 below). It
+   is what the PDF is made for: each application has its own tracking link.
+3. Fetch the PDF to send with `bisect_get_application_pdf` and that id, and
+   save it under the profile directory (`$JOB_SCANNER_HOME/applications/`),
+   never in the repository. Never fetch `trackingPdfUrl`: that is the
+   company's link, and opening it counts as the company reading the CV.
+4. Check it before it goes out, and show the user the result:
+   `.venv/bin/python -m scanner.ats <pdf> --job <job url> --id <application id>`
+   (or `--advert <file>` for a job the scanner has not read). Problems in the
+   text layer are worth fixing first. Missing skills are questions for the
+   user, never edits: the CV is not changed to match an advert. If they have
+   the experience, it goes into the CV in Bisect with its evidence; if not,
+   the letter says so.
+5. If the user decides not to send it after all, set the application's
+   `outcome` to `withdrawn` (applications cannot be deleted).
+6. Once sent: `scanner.triage set <url> applied --bisect <id>`.
+
+For the market rather than one job, `scanner.gap --cv <pdf> [--grep laravel]`
+lists the skills the adverts emailed lately ask for, and how often the CV names
+each.
+
 ## When the user says they applied to a job
 
 1. Find the job: `.venv/bin/python -m scanner.triage list --all`, or
