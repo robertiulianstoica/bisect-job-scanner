@@ -40,6 +40,7 @@ def test_setup_creates_the_profile_and_never_overwrites_it(repo, tmp_path):
     assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
     assert stat.S_IMODE((home / "config.toml").stat().st_mode) == 0o600
     assert "export JOB_SCANNER_MAILER_DSN=\n" in env_file.read_text()
+    assert "export ANTHROPIC_API_KEY=\n" in env_file.read_text()
     assert sh(["git", "config", "core.hooksPath"], repo).stdout.strip() == ".githooks"
 
     (home / "config.toml").write_text("mine")
@@ -55,6 +56,8 @@ def test_setup_creates_the_profile_and_never_overwrites_it(repo, tmp_path):
     ("notes.txt", "export JOB_SCANNER_MAILER_DSN='smtps://x'\n"),
     ("notes.txt", "JOB_SCANNER_MAILER_DSN=abc\n"),
     ("notes.txt", "my data is in ~/.job-scanner/state.sqlite3\n"),
+    ("notes.txt", "key = sk-ant-api03-not-a-real-key-0000\n"),
+    ("notes.txt", "export ANTHROPIC_API_KEY='not-a-real-key'\n"),
     ("state.sqlite3", "SQLite format 3"),
     ("copy.sqlite3-journal", "x"),
     ("scanner/config.toml", "[email]\n"),

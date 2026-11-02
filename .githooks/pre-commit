@@ -6,6 +6,7 @@
 #     other than the test fixture;
 #   - smtp:// URLs (documentation placeholders on example.com/.org pass);
 #   - JOB_SCANNER_MAILER_DSN= with a value (one with <placeholders> passes);
+#   - an Anthropic API key (sk-ant-...), or ANTHROPIC_API_KEY= with a value;
 #   - ~/.job-scanner paths, outside the files that document the profile directory.
 # A false alarm: git commit --no-verify, after reading what it found.
 
@@ -31,6 +32,10 @@ for file in $(git diff --cached --name-only --diff-filter=ACMR); do
   # A value holding <placeholders> is documentation, not a secret.
   if echo "$added" | grep -E "JOB_SCANNER_MAILER_DSN=[\"']?[^\"'\`[:space:]]" | grep -v '<' >/dev/null; then
     echo "pre-commit: $file sets JOB_SCANNER_MAILER_DSN (it belongs in \$JOB_SCANNER_HOME/env)" >&2; status=1
+  fi
+  if echo "$added" | grep -E 'sk-ant-[[:alnum:]_-]{8,}' >/dev/null \
+     || echo "$added" | grep -E "ANTHROPIC_API_KEY=[\"']?[^\"'\`[:space:]]" | grep -v '<' >/dev/null; then
+    echo "pre-commit: $file adds an Anthropic API key (it belongs in \$JOB_SCANNER_HOME/env)" >&2; status=1
   fi
   if ! echo "$file" | grep -E "$DOCS" >/dev/null && echo "$added" | grep -F '~/.job-scanner' >/dev/null; then
     echo "pre-commit: $file adds a ~/.job-scanner path (personal data; refer to \$JOB_SCANNER_HOME)" >&2; status=1

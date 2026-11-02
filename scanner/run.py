@@ -19,7 +19,7 @@ import pandas as pd
 
 from jobspy import scrape_jobs
 from jobspy.ats import matches_search
-from scanner import metrics, notify
+from scanner import fit, metrics, notify
 from scanner.rules import check_applicants, check_content, check_location
 from scanner.settings import load_config, lock_path, placeholders
 from scanner.state import State, boards_in, job_key, now
@@ -274,17 +274,23 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         if fresh:
-            print(notify.render(fresh)[1])
+            fit.score_jobs(fresh, config, log)
+            print(notify.render(fit.order(fresh))[1])
         return 0
 
     # Jobs wait in a queue until the next send hour, so a job that drops out
     # of a search before then is still emailed.
     queue_path = Path(config["run"]["state_path"]).expanduser().with_name("pending.json")
     queue = load_queue(queue_path)
-    pending = {job_key(job): job for job in queue["jobs"] if not state.is_seen(job_key(job), job.get("job_url"))}
-    pending.update((job_key(job), job) for job in fresh)
-    batch = sorted(pending.values(),
-                   key=lambda j: any(str(f).startswith("TypeScript/Python role") for f in j.get("flags") or []))
+    queued = {job_key(job): job for job in queue["jobs"] if not state.is_seen(job_key(job), job.get("job_url"))}
+    pending = dict(queued)
+    for job in fresh:
+        key = job_key(job)
+        if "fit" in queued.get(key, {}):  # scored when it was first queued: not paid for twice
+            job["fit"] = queued[key]["fit"]
+        pending[key] = job
+    fit.score_jobs(list(pending.values()), config, log)
+    batch = fit.order(list(pending.values()))
 
     at = datetime.now()
     send_hours = config["run"].get("send_hours")

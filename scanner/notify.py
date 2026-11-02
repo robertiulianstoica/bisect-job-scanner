@@ -117,13 +117,20 @@ def render(jobs: list[dict]) -> tuple[str, str, str]:
             lines.append("--- TypeScript / Python roles (matched on your strengths) ---\n")
             rows.append('</ul><h3 style="font-family:sans-serif">TypeScript / Python roles (matched on your strengths)</h3>'
                         '<ul style="font-family:sans-serif;line-height:1.4">')
-        facts = [freshness(job), applicants(job), job.get("site"), job.get("location") or "location not stated"]
+        scored = job.get("fit") or {}
+        facts = [scored.get("work_policy"), scored.get("salary"),
+                 scored.get("seniority") if scored.get("seniority") not in (None, "unclear") else None]
+        facts += [freshness(job), applicants(job), job.get("site"), job.get("location") or "location not stated"]
         facts += list(job.get("flags") or [])
         facts = [str(f) for f in facts if f]
-        lines.append(f"{job.get('title')} at {job.get('company')}\n  {' · '.join(facts)}\n  {job.get('job_url')}\n")
+        mark = f"[{scored['score']}/5] " if scored.get("score") else ""
+        why = scored.get("reason")
+        lines.append(f"{mark}{job.get('title')} at {job.get('company')}\n  {' · '.join(facts)}\n"
+                     + (f"  {why}\n" if why else "") + f"  {job.get('job_url')}\n")
         rows.append(
-            f"<li><a href=\"{html.escape(str(job.get('job_url')))}\"><b>{html.escape(str(job.get('title')))}</b></a>"
-            f" at {html.escape(str(job.get('company')))}<br><small>{html.escape(' · '.join(facts))}</small></li>"
+            f"<li>{html.escape(mark)}<a href=\"{html.escape(str(job.get('job_url')))}\"><b>{html.escape(str(job.get('title')))}</b></a>"
+            f" at {html.escape(str(job.get('company')))}<br><small>{html.escape(' · '.join(facts))}</small>"
+            + (f"<br><small><i>{html.escape(why)}</i></small>" if why else "") + "</li>"
         )
     text = "\n".join(lines)
     body = f"<ul style=\"font-family:sans-serif;line-height:1.4\">{''.join(rows)}</ul>"

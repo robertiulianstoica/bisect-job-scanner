@@ -41,6 +41,9 @@ else
 export JOB_SCANNER_MAILER_DSN=
 # The sender, e.g. 'Job scanner <jobs@example.com>'
 export JOB_SCANNER_MAIL_FROM=
+# Optional: your own Anthropic API key, for the fit score in the email ([ai] in
+# the config). Create one at https://console.anthropic.com/settings/keys
+export ANTHROPIC_API_KEY=
 ENV
   )
   chmod 600 "$PROFILE/env"

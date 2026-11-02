@@ -9,7 +9,9 @@ finds jobs; the applications sent are tracked in Bisect through its MCP server
 Everything personal lives in the profile directory, `$JOB_SCANNER_HOME` (by default `.job-scanner` in your home folder):
 `config.toml`, `env`, `state.sqlite3`, `pending.json`, logs, `backups/`.
 
-- Never print, copy or commit `env`: it holds the SMTP password.
+- Never print, copy or commit `env`: it holds the SMTP password and the user's
+  Anthropic API key. To check a key is set, test that the variable is non-empty;
+  never show it.
 - Never write to `state.sqlite3` except through the commands below, and never
   replace it; `python -m scanner.backup --restore` exists for that.
 - Nothing from the profile directory goes into the repository; the pre-commit
@@ -71,6 +73,10 @@ found and how many got shortlist, maybe or applied. Send each line with
 replaces it, so resending a week after a triage session is safe.
 
 ## Working on the code
+
+- The fit score (`scanner/fit.py`) calls Claude Haiku 5.5 with the key from
+  `[ai] api_key_env` only. It must never drop a job or fail a scan; its tests use
+  a fake client, so they need no key and no network.
 
 - Tests: `.venv/bin/python -m pytest -q tests` (no network).
 - The rules are tested against `tests/fixtures/config.toml`, not anyone's config.

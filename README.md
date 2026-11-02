@@ -3,8 +3,9 @@
 A job scanner for [Bisect](https://bisect.eu) users. It reads company career
 sites, job boards and LinkedIn every 30 minutes, keeps the roles that match
 your stack and the places you can work from, and emails you the new ones,
-usually within half an hour of their being posted. The applications you send
-are tracked in Bisect through its MCP server.
+usually within half an hour of their being posted. With your own Anthropic API
+key, Claude scores each job for how well it fits you, so the best ones come
+first. The applications you send are tracked in Bisect through its MCP server.
 
 It is a fork of [JobSpy](https://github.com/cullenwatson/JobSpy) (MIT): the
 scraping library in `jobspy/` comes from there, with new sources added; its own
@@ -25,6 +26,12 @@ documentation is upstream.
 - **Emails the new ones** at the hours you choose (08:00 and 14:00 by
   default), through any SMTP server; between those hours they wait in a queue,
   so nothing is lost.
+- **AI fit score (optional):** with your own Anthropic API key, Claude
+  Haiku 5.5 reads every job before it is emailed and gives it a fit score from
+  1 to 5 against a profile you write, one sentence of why, and the pay, remote
+  policy and level as the advert states them. The best fits come first; a
+  systems-administration role that slipped past the rules sinks to the bottom.
+  About $1-2 a month ([details](#fit-score-with-claude-optional)).
 - **Keeps your verdicts:** shortlist, maybe, later, applied or out, with a
   reason, and whether the jobs you kept are still open (`scanner.triage`).
 - **Tracks applications in Bisect:** from Claude Code, "I applied to Acme"
@@ -159,6 +166,40 @@ On Linux everything but step 5 works; schedule the scan with cron instead:
 .venv/bin/python -m scanner.run --add-board greenhouse <company>
 ```
 
+## Fit score with Claude (optional)
+
+Each job that passes your rules can be read by Claude Haiku 5.5 together with
+a short profile you write, before it waits for the next email:
+
+```text
+[5/5] Senior Laravel Developer at Acme
+  remote, EU only · €60-75k a year · senior · posted 3 h ago · greenhouse · Lisbon (remote)
+  Laravel and Vue with Stripe payments match you closely; asks for Kubernetes, which you do not list.
+  https://...
+```
+
+1. Create your own API key at <https://console.anthropic.com/settings/keys>
+   and put it in `~/.job-scanner/env`, next to the SMTP password:
+   `export ANTHROPIC_API_KEY='<your key>'`. Each person uses their own key; it
+   never goes in the config (which is backed up) or the repository (the
+   pre-commit check refuses it).
+2. In `~/.job-scanner/config.toml`, set `[ai] enabled = true` and write your
+   `profile`: what you are good at, the work you want, what you avoid.
+3. Try it with `scanner.run --dry-run`: the email it prints is scored.
+
+- **Cost:** each job is scored once (a job already queued keeps its score), at
+  under $0.001 a job with Claude Haiku 5.5 (about $0.0007 measured): roughly
+  $1-2 a month at 70 jobs a day (`[ai] effort = "low"` costs about a third
+  less, with a little less judgement). Each scan's
+  `scan.log` line says how many were scored, the tokens and the cost;
+  `max_jobs_per_run` caps one run.
+- **What is sent to Anthropic:** per job, its title, company, location and
+  advert text, with your profile and the stack and places from your config.
+  Not your CV, your verdicts or your email address.
+- **What it never does:** drop a job. The score only orders and annotates the
+  email; without a key, or when the API cannot be reached, the email goes out
+  as before.
+
 ## Tracking applications with Bisect
 
 Finding jobs works on its own. Tracking what you do with them is built on
@@ -222,7 +263,7 @@ Everything personal is in one profile directory outside the repository,
 | File | What |
 |---|---|
 | `config.toml` | your searches, places, email address |
-| `env` | secrets: the SMTP DSN and sender (mode 600) |
+| `env` | secrets: the SMTP DSN and sender, your Anthropic API key (mode 600) |
 | `state.sqlite3` | jobs seen, boards found, postings, your triage verdicts, market history |
 | `pending.json` | jobs waiting for the next send hour |
 | `scan.log`, `backup.log` | what the launchd agents did |
@@ -262,7 +303,8 @@ emails the whole queue in one message, and a failed send leaves it queued.
 `config.toml`, `env` or any `.env*`, `*.sqlite3*`, `pending.json`, logs and
 `backups/` are in `.gitignore`. The pre-commit check (`.githooks/pre-commit`,
 enabled by `setup.sh`) also refuses staged database files and added lines with
-an `smtp://` URL, a `JOB_SCANNER_MAILER_DSN=` value or a `~/.job-scanner` path.
+an `smtp://` URL, a `JOB_SCANNER_MAILER_DSN=` value, an Anthropic API key or a
+`~/.job-scanner` path.
 
 ## Reviewing the applications sent (optional)
 
