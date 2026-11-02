@@ -286,8 +286,8 @@ def main(argv: list[str] | None = None) -> int:
     pending = dict(queued)
     for job in fresh:
         key = job_key(job)
-        if "fit" in queued.get(key, {}):  # scored when it was first queued: not paid for twice
-            job["fit"] = queued[key]["fit"]
+        if "coverage" in queued.get(key, {}):  # read when it was first queued: not paid for twice
+            job["coverage"] = queued[key]["coverage"]
         pending[key] = job
     fit.score_jobs(list(pending.values()), config, log)
     batch = fit.order(list(pending.values()))

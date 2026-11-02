@@ -74,9 +74,11 @@ replaces it, so resending a week after a triage session is safe.
 
 ## Working on the code
 
-- The fit score (`scanner/fit.py`) calls Claude Haiku 5.5 with the key from
-  `[ai] api_key_env` only. It must never drop a job or fail a scan; its tests use
-  a fake client, so they need no key and no network.
+- The skill coverage (`scanner/fit.py`) calls Claude Haiku 5.5 with the key
+  from `[ai] api_key_env` only, and the CV text at `[ai] cv`. It must never drop
+  a job, change the CV or fail a scan; its tests use a fake client, so they
+  need no key and no network. A job's reading is in the email and in
+  `pending.json` until it is sent.
 
 - Tests: `.venv/bin/python -m pytest -q tests` (no network).
 - The rules are tested against `tests/fixtures/config.toml`, not anyone's config.

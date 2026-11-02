@@ -164,21 +164,22 @@ keep_weekly = 4
 keep_precious_days = 30
 
 [ai]
-# A fit score from 1 to 5 for each job in the email, with one sentence of why
-# and the pay, remote policy and level as the advert states them; the best fits
-# come first. Claude Haiku 5.5 reads each job once, before it is emailed:
-# under $0.001 a job, about $1-2 a month at 70 jobs a day. Needs your own Anthropic API key in the
-# env file (the variable named below); nothing is sent without it. Sent per
-# job: the advert, and the profile below with your stack and places.
+# Skill coverage for each job in the email, the way an ATS reads it: every
+# skill the advert asks for, checked against your CV ("Skills 7 of 9 (78%) ·
+# missing: Rust, Kubernetes"), with the pay, remote policy and level as the
+# advert states them; the best-covered jobs come first. Claude Haiku 5.5 reads
+# each job once, before it is emailed, with your CV cached: about $3-4 a month
+# at 70 jobs a day. Needs your own Anthropic API key in the env file (the
+# variable named below); nothing is sent without it. Sent: your CV text and
+# each job's advert.
 enabled = false
 model = "claude-haiku-5-5"
 # effort = "low"                   # cheaper still, with a little less judgement
 api_key_env = "ANTHROPIC_API_KEY"
 max_jobs_per_run = 60
-# Who you are and what you want, in your own words: what you are good at, the
-# work and companies you want, what you would rather avoid.
-profile = """
-"""
+# Your CV as plain text, in the profile directory (never in the repository),
+# e.g. from the PDF you send: pdftotext cv.pdf ~/.job-scanner/cv.txt
+cv = "~/.job-scanner/cv.txt"
 
 [review]
 # The application review screen (python -m scanner.review), for a jobs

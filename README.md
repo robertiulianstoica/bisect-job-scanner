@@ -4,8 +4,8 @@ A job scanner for [Bisect](https://bisect.eu) users. It reads company career
 sites, job boards and LinkedIn every 30 minutes, keeps the roles that match
 your stack and the places you can work from, and emails you the new ones,
 usually within half an hour of their being posted. With your own Anthropic API
-key, Claude scores each job for how well it fits you, so the best ones come
-first. The applications you send are tracked in Bisect through its MCP server.
+key, Claude checks every skill each advert asks for against your CV, like an
+ATS, so the jobs you cover best come first. The applications you send are tracked in Bisect through its MCP server.
 
 It is a fork of [JobSpy](https://github.com/cullenwatson/JobSpy) (MIT): the
 scraping library in `jobspy/` comes from there, with new sources added; its own
@@ -26,12 +26,13 @@ documentation is upstream.
 - **Emails the new ones** at the hours you choose (08:00 and 14:00 by
   default), through any SMTP server; between those hours they wait in a queue,
   so nothing is lost.
-- **AI fit score (optional):** with your own Anthropic API key, Claude
-  Haiku 5.5 reads every job before it is emailed and gives it a fit score from
-  1 to 5 against a profile you write, one sentence of why, and the pay, remote
-  policy and level as the advert states them. The best fits come first; a
+- **AI skill coverage (optional):** with your own Anthropic API key, Claude
+  Haiku 5.5 reads every job before it is emailed, lists every skill the advert
+  asks for and checks each against your CV, the way an ATS does: "Skills 12 of
+  18 (67%) · missing: Liquid, Remix". It also reads the pay, remote policy and
+  level as the advert states them. The best-covered jobs come first; a
   systems-administration role that slipped past the rules sinks to the bottom.
-  About $1-2 a month ([details](#fit-score-with-claude-optional)).
+  About $3-4 a month ([details](#skill-coverage-with-claude-optional)).
 - **Keeps your verdicts:** shortlist, maybe, later, applied or out, with a
   reason, and whether the jobs you kept are still open (`scanner.triage`).
 - **Tracks applications in Bisect:** from Claude Code, "I applied to Acme"
@@ -166,15 +167,18 @@ On Linux everything but step 5 works; schedule the scan with cron instead:
 .venv/bin/python -m scanner.run --add-board greenhouse <company>
 ```
 
-## Fit score with Claude (optional)
+## Skill coverage with Claude (optional)
 
-Each job that passes your rules can be read by Claude Haiku 5.5 together with
-a short profile you write, before it waits for the next email:
+Each job that passes your rules can be read by Claude Haiku 5.5 next to your
+CV, the way an applicant tracking system reads it: every skill the advert asks
+for, required or nice to have, checked against what your CV shows (by name or a
+clear equivalent). The email leads each job with the share of required skills
+covered, and lists the best-covered jobs first:
 
 ```text
-[5/5] Senior Laravel Developer at Acme
-  remote, EU only · €60-75k a year · senior · posted 3 h ago · greenhouse · Lisbon (remote)
-  Laravel and Vue with Stripe payments match you closely; asks for Kubernetes, which you do not list.
+Skills 12 of 18 (67%) · missing: Liquid, Polaris UI, Remix · nice to have, missing: ADA guidelines
+Shopify Developer at Hivex
+  remote, worldwide · mid · posted 3 h ago · himalayas · Worldwide
   https://...
 ```
 
@@ -183,22 +187,23 @@ a short profile you write, before it waits for the next email:
    `export ANTHROPIC_API_KEY='<your key>'`. Each person uses their own key; it
    never goes in the config (which is backed up) or the repository (the
    pre-commit check refuses it).
-2. In `~/.job-scanner/config.toml`, set `[ai] enabled = true` and write your
-   `profile`: what you are good at, the work you want, what you avoid.
-3. Try it with `scanner.run --dry-run`: the email it prints is scored.
+2. Save your CV as plain text in the profile directory, from the PDF you send:
+   `pdftotext cv.pdf ~/.job-scanner/cv.txt` (with Bisect, the PDF of your
+   current version). Replace the file when your CV changes.
+3. In `~/.job-scanner/config.toml`, set `[ai] enabled = true`.
+4. Try it with `scanner.run --dry-run`: the email it prints carries the coverage.
 
-- **Cost:** each job is scored once (a job already queued keeps its score), at
-  under $0.001 a job with Claude Haiku 5.5 (about $0.0007 measured): roughly
-  $1-2 a month at 70 jobs a day (`[ai] effort = "low"` costs about a third
-  less, with a little less judgement). Each scan's
-  `scan.log` line says how many were scored, the tokens and the cost;
-  `max_jobs_per_run` caps one run.
-- **What is sent to Anthropic:** per job, its title, company, location and
-  advert text, with your profile and the stack and places from your config.
-  Not your CV, your verdicts or your email address.
-- **What it never does:** drop a job. The score only orders and annotates the
-  email; without a key, or when the API cannot be reached, the email goes out
-  as before.
+- **Cost:** each job is read once (a job already queued keeps its reading), and
+  the CV is cached between jobs: about $0.002 a job with Claude Haiku 5.5,
+  roughly $3-4 a month at 70 jobs a day (`[ai] effort = "low"` costs less,
+  with a less careful reading). Each scan's `scan.log` line gives the tokens
+  and the cost; `max_jobs_per_run` caps one run.
+- **What is sent to Anthropic:** your CV text, and per job its title, company,
+  location and advert text. Not your verdicts or your email address.
+- **What it never does:** drop a job, or change your CV. Coverage only orders
+  and annotates the email; without a key or a CV, or when the API cannot be
+  reached, the email goes out as before. For one job in depth, with the PDF's
+  text layer checked too, use `scanner.ats`.
 
 ## Tracking applications with Bisect
 
